@@ -471,10 +471,11 @@ color_map = {custom_names[k]: PERSONA_PRESETS[cluster_persona_mapping[k]]["color
 # =============================================================================
 # 6. STRUKTUR TABS UTAMA (PRESENTATION & OPERATIONAL FOCUS FIRST)
 # =============================================================================
-tab1, tab2, tab_research_lab, tab_submission, tab_schema, tab_explorer = st.tabs([
-    "Laporan Profil Segmen Pelanggan", 
-    "Asisten Diagnostik Pelanggan AI", 
-    "Data Research Lab (Technical)", 
+tab1, tab_eda, tab2, tab_research_lab, tab_submission, tab_schema, tab_explorer = st.tabs([
+    "Laporan Profil Segmen Pelanggan",
+    "Exploratory Data Analysis (EDA)",
+    "Asisten Diagnostik Pelanggan AI",
+    "Data Research Lab (Technical)",
     "Laporan Metodologi & Validasi Model",
     "Panduan Pembaruan Database",
     "Dataset Explorer"
@@ -577,6 +578,124 @@ with tab1:
         fig_bar.update_yaxes(showgrid=True, gridcolor="#F1F5F9")
         st.plotly_chart(fig_bar, use_container_width=True)
 
+# ==========================
+# TAB EDA
+# ==========================
+with tab_eda:
+
+    st.markdown("### Exploratory Data Analysis (EDA)")
+    st.markdown(
+        "Analisis eksploratif dilakukan untuk memahami karakteristik data "
+        "sebelum proses segmentasi menggunakan algoritma K-Means."
+    )
+
+    # Dataset Overview
+    st.markdown("#### Ringkasan Dataset")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Jumlah Data", len(df_raw))
+
+    with col2:
+        st.metric("Jumlah Fitur", len(df_raw.columns))
+
+    with col3:
+        st.metric("Missing Value", int(df_raw.isnull().sum().sum()))
+
+    with col4:
+        st.metric("Duplikasi", int(df_raw.duplicated().sum()))
+
+    st.markdown("---")
+
+    st.markdown("#### Statistik Deskriptif")
+
+    st.dataframe(
+        df_raw[SELECTED_FEATURES]
+        .describe()
+        .round(2),
+        use_container_width=True
+    )
+
+    st.markdown("---")
+
+    st.markdown("#### Distribusi Data")
+
+    selected_hist = st.selectbox(
+        "Pilih Variabel",
+        SELECTED_FEATURES
+    )
+
+    fig_hist = px.histogram(
+        df_raw,
+        x=selected_hist,
+        nbins=20,
+        marginal="box"
+    )
+
+    st.plotly_chart(
+        fig_hist,
+        use_container_width=True
+    )
+
+    st.markdown("---")
+
+    st.markdown("#### Korelasi Antar Variabel")
+
+    corr = df_raw[SELECTED_FEATURES].corr()
+
+    fig_corr = px.imshow(
+        corr,
+        text_auto=True,
+        aspect="auto",
+        color_continuous_scale="Blues"
+    )
+
+    st.plotly_chart(
+        fig_corr,
+        use_container_width=True
+    )
+    
+    st.markdown("---")
+
+    st.markdown("#### Analisis Outlier")
+
+    selected_box = st.selectbox(
+        "Pilih Variabel",
+        SELECTED_FEATURES,
+        key="eda_box"
+    )
+
+    fig_box = px.box(
+        df_raw,
+        y=selected_box,
+        points="outliers"
+    )
+
+    st.plotly_chart(
+        fig_box,
+        use_container_width=True
+    )
+
+    if len(SELECTED_FEATURES) <= 5:
+
+        st.markdown("---")
+        st.markdown("#### Scatter Matrix")
+
+        fig_matrix = px.scatter_matrix(
+            df_raw,
+            dimensions=SELECTED_FEATURES
+        )
+
+        fig_matrix.update_layout(
+            height=700
+        )
+
+        st.plotly_chart(
+            fig_matrix,
+            use_container_width=True
+        )
+    
 # -----------------------------------------------------------------------------
 # TAB 2: ASISTEN DIAGNOSTIK PELANGGAN (STAFF TOOL)
 # -----------------------------------------------------------------------------
