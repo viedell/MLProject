@@ -805,6 +805,9 @@ with tab_research_lab:
         st.plotly_chart(fig_pca_lab, use_container_width=True)
         
         st.markdown("#### Rata-Rata Koordinat Sentroid Asli")
+        original_centroids = pd.DataFrame(scaler.inverse_transform(kmeans.cluster_centers_), columns=SELECTED_FEATURES)
+        original_centroids.insert(0, "Cluster_ID", range(n_clusters))
+        original_centroids["Nama Segmen"] = original_centroids["Cluster_ID"].map(custom_names)
         st.dataframe(original_centroids.drop(columns="Cluster_ID").set_index("Nama Segmen").round(2), use_container_width=True)
 
 # -----------------------------------------------------------------------------
