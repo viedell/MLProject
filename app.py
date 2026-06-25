@@ -552,25 +552,26 @@ with tab1:
         fig_share.update_layout(height=350, margin=dict(l=10, r=10, b=10, t=10))
         st.plotly_chart(fig_share, use_container_width=True)
         
-        st.markdown("#### Perbandingan Karakteristik Fitur Antar Segmen")
-        st.caption("Grafik pembanding kontribusi fitur relatif dari masing-masing segmen (Skala Terstandarisasi).")
+        st.markdown("#### Rata-Rata Karakteristik Nilai Riil Segmen")
+        st.caption("Nilai rata-rata aktual dari masing-masing parameter untuk presentasi staff (Skala Satuan Riil).")
         
-        # Centroid scaled bar chart
-        centroids_scaled = pd.DataFrame(kmeans.cluster_centers_, columns=SELECTED_FEATURES)
-        centroids_scaled["Cluster_Name"] = [custom_names[idx] for idx in range(n_clusters)]
+        # Hitung sentroid asli
+        centroids_original_plot = pd.DataFrame(scaler.inverse_transform(kmeans.cluster_centers_), columns=SELECTED_FEATURES)
+        centroids_original_plot["Cluster_Name"] = [custom_names[idx] for idx in range(n_clusters)]
         
         melted_cents = pd.melt(
-            centroids_scaled, id_vars=["Cluster_Name"], value_vars=SELECTED_FEATURES,
-            var_name="Parameter", value_name="Nilai Relatif"
+            centroids_original_plot, id_vars=["Cluster_Name"], value_vars=SELECTED_FEATURES,
+            var_name="Parameter", value_name="Nilai Aktual"
         )
         
         fig_bar = px.bar(
-            melted_cents, x="Parameter", y="Nilai Relatif", color="Cluster_Name",
-            barmode="group", color_discrete_map=color_map
+            melted_cents, x="Parameter", y="Nilai Aktual", color="Cluster_Name",
+            barmode="group", color_discrete_map=color_map,
+            labels={"Nilai Aktual": "Nilai Rata-Rata Aktual"}
         )
         fig_bar.update_layout(
             height=300, margin=dict(l=10, r=10, b=10, t=10), plot_bgcolor="#FFFFFF",
-            xaxis_title="", yaxis_title="Skala Relatif Rata-Rata"
+            xaxis_title="", yaxis_title="Rata-Rata Unit Riil"
         )
         fig_bar.update_xaxes(showgrid=True, gridcolor="#F1F5F9")
         fig_bar.update_yaxes(showgrid=True, gridcolor="#F1F5F9")
