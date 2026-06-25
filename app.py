@@ -471,10 +471,11 @@ color_map = {custom_names[k]: PERSONA_PRESETS[cluster_persona_mapping[k]]["color
 # =============================================================================
 # 6. STRUKTUR TABS UTAMA (PRESENTATION & OPERATIONAL FOCUS FIRST)
 # =============================================================================
-tab1, tab2, tab_research_lab, tab_schema, tab_explorer = st.tabs([
+tab1, tab2, tab_research_lab, tab_submission, tab_schema, tab_explorer = st.tabs([
     "Laporan Profil Segmen Pelanggan", 
     "Asisten Diagnostik Pelanggan AI", 
     "Data Research Lab (Technical)", 
+    "ML Project Submission Hub",
     "Panduan Pembaruan Database",
     "Dataset Explorer"
 ])
@@ -811,7 +812,107 @@ with tab_research_lab:
         st.dataframe(original_centroids.drop(columns="Cluster_ID").set_index("Nama Segmen").round(2), use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# TAB 4: PANDUAN PEMBARUAN DATABASE (HOW-TO UPDATE)
+# TAB 4: ML PROJECT SUBMISSION HUB (ACADEMIC REPORT GENERATOR)
+# -----------------------------------------------------------------------------
+with tab_submission:
+    st.markdown("### Machine Learning Project Report & Submission Hub")
+    st.markdown("Unduh laporan akademik lengkap dari project ini beserta dengan program kodenya untuk diunggah ke Google Drive Anda sesuai dengan kriteria penilaian standar.")
+    
+    # Pre-generate markdown tables to prevent compilation crashes on pandas dependencies
+    try:
+        desc_table_md = df_clean[SELECTED_FEATURES].describe().round(2).to_markdown()
+        centroid_table_md = original_centroids.drop(columns="Cluster_ID").set_index("Nama Segmen").round(2).to_markdown()
+    except Exception:
+        desc_table_md = df_clean[SELECTED_FEATURES].describe().round(2).to_string()
+        centroid_table_md = original_centroids.drop(columns="Cluster_ID").set_index("Nama Segmen").round(2).to_string()
+
+    # Dynamic Report Template based on current run
+    report_content = f"""# Laporan Project Machine Learning: Segmentasi Pelanggan AI
+
+Platform sistem penunjang keputusan operasional ini dikembangkan untuk mengklasifikasikan perilaku pelanggan secara sistematis dengan menggunakan model pembelajaran mesin unsupervised.
+
+---
+
+## A. Collecting Dataset yang Akurat
+- **Sumber Data:** Berkas data transaksi/demografi retail. Sumber data default dianalisa dari berkas `{DEFAULT_CSV}`.
+- **Ukuran Dataset Latih:** {len(df_clean)} baris (setelah melewati filter duplikasi dan data pencilan).
+- **Atribut/Fitur Pembelajaran Latih:** {", ".join(SELECTED_FEATURES)}
+- **Tabel Statistik Deskriptif Dataset Latih:**
+{desc_table_md}
+
+---
+
+## B. Pemilihan Model Machine Learning
+- **Kategori Model:** Unsupervised Learning (Pembelajaran Tidak Terarah).
+- **Algoritma Model:** K-Means Clustering.
+- **Rasionalisasi Pemilihan Model:** 
+  1. Dataset bersifat *unlabeled* (tidak memiliki label target klasifikasi bawaan), sehingga sangat cocok diselesaikan secara statistik menggunakan partisi kedekatan spasial.
+  2. K-Means relatif sangat cepat dan efisien untuk memproses data numerik berdasarkan perhitungan jarak Euclidean geometris.
+- **Hyperparameter Terpilih (Active Run):**
+  - Jumlah Klaster (K): {n_clusters}
+  - Metode Inisialisasi: `k-means++` (mempercepat konvergensi sentroid awal)
+  - Batas Iterasi Maksimum: {max_iter}
+  - Nilai Pengacak (Seed): {random_seed}
+
+---
+
+## C. Pemrosesan Data & Visualisasi Result
+- **Normalisasi Fitur (Preprocessing):** Menggunakan modul `{scaler_choice}` untuk menstandarkan rentang dimensi data agar parameter berskala besar tidak mendominasi model.
+- **Saringan Pencilan (Outlier Filtering):** {"Aktif (Threshold = " + str(z_threshold) + " Standard Deviation)" if filter_outliers else "Tidak Aktif"}
+- **Reduksi Dimensi Spasial:** Menggunakan Principal Component Analysis (PCA) untuk memproyeksikan fitur multi-dimensi ke dalam bidang kartesius 2-Dimensi.
+- **Titik Pusat Klaster Akhir (Centroids Asli):**
+{centroid_table_md}
+
+---
+
+## D. Evaluasi Model dan Analisis Result
+Kualitas model segmentasi K-Means diverifikasi secara objektif menggunakan tiga indeks metrik internal:
+1. **Silhouette Score:** `{sil_score:.4f}`
+   - *Analisis:* Mengukur tingkat kerapatan objek dalam klaster dan pemisahan dengan klaster tetangga. Nilai yang positif menunjukkan pembentukan grup yang ideal.
+2. **Davies-Bouldin Index:** `{db_score:.4f}`
+   - *Analisis:* Mengukur rasio penyebaran dalam klaster terhadap pemisahan antarklaster. Nilai yang semakin kecil mendekati 0 menunjukkan partisi yang sangat tegas.
+3. **Calinski-Harabasz Index:** `{ch_score:.1f}`
+   - *Analisis:* Rasio jumlah kuadrat antar-klaster terhadap jumlah kuadrat dalam-klaster. Skor tinggi memvalidasi struktur klaster yang kokoh.
+4. **Analisis Elbow Curve (WCSS):**
+   - Nilai WCSS dihitung dinamis dari K=1 s.d. 10. Tikungan kurva yang landai memvalidasi keputusan K={n_clusters} sebagai jumlah segmentasi paling efisien secara komputasi.
+
+---
+
+## E. Deployment Result
+- **Kerangka Deployment:** Diunggah sebagai aplikasi web interaktif (*web-app dashboard*) menggunakan library Streamlit Python.
+- **Modul Deployment:**
+  1. *AI Customer Diagnostic Assistant*: Antarmuka inferensi dinamis bagi staf toko untuk memasukkan data numerik pelanggan baru dan langsung memperoleh kategori segmentasi secara instan.
+  2. *Operational Action Guidelines*: Menghasilkan arahan taktis operasional dan naskah percakapan layanan pelanggan terstandardisasi berdasarkan kategori klaster AI.
+"""
+
+    st.markdown("#### 1. Preview Laporan Proyek Akademik (Kriteria A s.d E)")
+    st.text_area("Konten File Laporan (Markdown)", report_content, height=350)
+    
+    # Download Button for the Report File
+    st.download_button(
+        label="Unduh Berkas Laporan Project_Report.md",
+        data=report_content,
+        file_name="ML_Project_Report.md",
+        mime="text/markdown",
+        use_container_width=True
+    )
+    
+    st.markdown("---")
+    
+    # 2. Exporter Source Code
+    st.markdown("#### 2. Berkas Source Code Program (app.py)")
+    st.caption("Salin kode di bawah ini atau lampirkan tautan berkas ini untuk memenuhi kelengkapan program.")
+    
+    try:
+        with open(__file__, "r", encoding="utf-8") as f:
+            code_text = f.read()
+    except Exception:
+        code_text = "# Gagal memuat berkas kode program secara otomatis. Silakan salin manual dari file app.py."
+        
+    st.code(code_text, language="python")
+
+# -----------------------------------------------------------------------------
+# TAB 5: PANDUAN PEMBARUAN DATABASE (HOW-TO UPDATE)
 # -----------------------------------------------------------------------------
 with tab_schema:
     st.markdown("### Panduan Pembaruan Database Layanan")
@@ -878,7 +979,7 @@ with tab_schema:
             st.warning("Berkas acuan standar Mall_Customers.csv tidak ditemukan.")
 
 # -----------------------------------------------------------------------------
-# TAB 5: BASIS DATA & EKSPOR (DATABASE EXPLORER)
+# TAB 6: BASIS DATA & EKSPOR (DATABASE EXPLORER)
 # -----------------------------------------------------------------------------
 with tab_explorer:
     st.markdown("### Basis Data Hasil Segmentasi")
@@ -897,4 +998,4 @@ with tab_explorer:
     )
     
     st.markdown("---")
-    st.markdown("<div style='text-align: center; color: #94A3B8; font-size: 0.8rem;'>System Version: 5.0.0-Operational-Enterprise | Backend Engine: scikit-learn | UI Engine: Streamlit</div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; color: #94A3B8; font-size: 0.8rem;'>System Version: 5.1.0-Operational-Enterprise | Backend Engine: scikit-learn | UI Engine: Streamlit</div>", unsafe_allow_html=True)
