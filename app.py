@@ -8,19 +8,19 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 from sklearn.decomposition import PCA
 
-# Mengabaikan peringatan (warnings) agar UI tetap bersih
+# Mengabaikan peringatan agar UI tetap bersih
 warnings.filterwarnings('ignore')
 
 # =============================================================================
-# 1. KONFIGURASI HALAMAN & MANAJEMEN TEMA (UI/UX)
+# 1. KONFIGURASI HALAMAN & MANAJEMEN TEMA (MINIMALIST SAAS STYLE)
 # =============================================================================
 st.set_page_config(
     page_title="Enterprise Customer Insight AI",
-    page_icon="💎",
+    page_icon="https://img.icons8.com/color/48/artificial-intelligence.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -28,56 +28,42 @@ st.set_page_config(
 def inject_custom_css():
     """
     Fungsi untuk menyuntikkan custom CSS ke dalam Streamlit.
-    Mengatur font, warna latar, styling card, animasi, dan komponen visual lainnya
-    agar menyerupai aplikasi SaaS modern.
+    Mengatur font, warna latar, styling card, dan komponen visual lainnya
+    agar menyerupai aplikasi SaaS modern minimalis (tanpa emoji).
     """
     custom_css = """
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
         /* Global Styles */
         html, body, [class*="css"] {
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: #F8FAFC;
         }
         
-        /* Hero Banner / Header */
+        /* Modern Header Banner */
         .hero-banner {
-            background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
-            padding: 45px 35px;
-            border-radius: 16px;
+            background-color: #0F172A;
+            border-bottom: 2px solid #E2E8F0;
+            padding: 35px 30px;
+            border-radius: 12px;
             color: #FFFFFF;
-            text-align: center;
             margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-            position: relative;
-            overflow: hidden;
-        }
-        .hero-banner::before {
-            content: '';
-            position: absolute;
-            top: -50%; left: -50%; width: 200%; height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.08) 10%, transparent 20%);
-            background-size: 20px 20px;
-            opacity: 0.4;
-            z-index: 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
         .hero-title {
-            font-size: 2.8rem;
+            font-size: 2.2rem;
             font-weight: 700;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             letter-spacing: -0.5px;
-            z-index: 1;
-            position: relative;
+            color: #F8FAFC;
         }
         .hero-subtitle {
-            font-size: 1.15rem;
-            font-weight: 300;
-            opacity: 0.95;
-            max-width: 850px;
-            margin: 0 auto;
-            z-index: 1;
-            position: relative;
+            font-size: 1.05rem;
+            font-weight: 400;
+            opacity: 0.85;
+            max-width: 900px;
+            color: #E2E8F0;
             line-height: 1.5;
         }
 
@@ -85,232 +71,211 @@ def inject_custom_css():
         .metric-container {
             background-color: #FFFFFF;
             border: 1px solid #E2E8F0;
-            border-radius: 12px;
+            border-radius: 8px;
             padding: 20px;
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            transition: all 0.2s ease-in-out;
         }
         .metric-container:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 20px rgba(0,0,0,0.06);
-            border-color: #3B82F6;
+            border-color: #CBD5E1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
         }
         .metric-title {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: #64748B;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
+            letter-spacing: 0.75px;
+            margin-bottom: 6px;
             font-weight: 600;
         }
         .metric-value {
-            font-size: 2.2rem;
+            font-size: 2rem;
             font-weight: 700;
             color: #0F172A;
         }
 
-        /* Persona & Insight Cards */
+        /* Minimalist Insight Cards */
         .insight-card {
             background-color: #FFFFFF;
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-            border-left: 6px solid #CBD5E1;
-            transition: all 0.2s ease-in-out;
+            border-radius: 8px;
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            border: 1px solid #E2E8F0;
+            border-left: 5px solid #CBD5E1;
+            transition: all 0.2s ease;
         }
         .insight-card:hover {
-            transform: scale(1.008);
-            box-shadow: 0 8px 18px rgba(0,0,0,0.05);
+            border-color: #CBD5E1;
         }
         .insight-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             border-bottom: 1px solid #F1F5F9;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
         }
         .insight-title {
-            font-size: 1.35rem;
-            font-weight: 700;
-            color: #1E293B;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #0F172A;
         }
         .insight-badge {
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
             font-weight: 600;
             color: white;
         }
         .insight-stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
             background-color: #F8FAFC;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #E2E8F0;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border: 1px solid #F1F5F9;
         }
         .stat-item {
             text-align: center;
         }
         .stat-label {
-            font-size: 0.78rem;
+            font-size: 0.7rem;
             color: #64748B;
             text-transform: uppercase;
-            font-weight: 500;
+            font-weight: 600;
             letter-spacing: 0.5px;
         }
         .stat-val {
-            font-size: 1.15rem;
+            font-size: 1.05rem;
             font-weight: 600;
             color: #0F172A;
-            margin-top: 4px;
+            margin-top: 2px;
         }
         .strategy-box {
-            background-color: #F0F4F8;
-            border-left: 4px solid #3B82F6;
-            padding: 15px;
+            background-color: #F8FAFC;
+            border-left: 3px solid #6366F1;
+            padding: 12px 16px;
             border-radius: 4px;
-            font-size: 0.92rem;
-            color: #334155;
-            line-height: 1.6;
+            font-size: 0.9rem;
+            color: #475569;
+            line-height: 1.5;
+            border: 1px solid #E2E8F0;
+            border-left-width: 3px;
         }
 
         /* Step Card for Tutorial */
         .step-card {
             background-color: #FFFFFF;
             border: 1px solid #E2E8F0;
-            border-radius: 8px;
-            padding: 18px;
-            margin-bottom: 12px;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 10px;
         }
         .step-badge {
-            background-color: #3B82F6;
+            background-color: #0F172A;
             color: white;
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            margin-right: 10px;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-weight: 600;
+            margin-right: 8px;
+            font-size: 0.85rem;
         }
 
         /* Tabs Styling Override */
         .stTabs [data-baseweb="tab-list"] {
-            gap: 16px;
+            gap: 10px;
         }
         .stTabs [data-baseweb="tab"] {
-            height: 52px;
-            white-space: pre-wrap;
+            height: 48px;
             background-color: #F1F5F9;
-            border-radius: 8px 8px 0px 0px;
-            gap: 2px;
-            padding-top: 10px;
-            padding-bottom: 10px;
+            border-radius: 6px 6px 0px 0px;
+            padding-top: 8px;
+            padding-bottom: 8px;
             font-weight: 500;
             color: #475569;
             border: 1px solid #E2E8F0;
             border-bottom: none;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
         }
         .stTabs [aria-selected="true"] {
             background-color: #FFFFFF;
-            color: #2563EB;
-            font-weight: 700;
-            border-top: 3px solid #2563EB;
+            color: #4F46E5;
+            font-weight: 600;
+            border-top: 2px solid #4F46E5;
         }
     </style>
     """
     st.markdown(custom_css, unsafe_allow_html=True)
 
-# Eksekusi injeksi CSS
 inject_custom_css()
 
-# Render Hero Banner
+# Render Modern Header (No Emojis)
 st.markdown("""
 <div class="hero-banner">
-    <div class="hero-title">💎 Enterprise Customer Insight AI</div>
-    <div class="hero-subtitle">Platform analitik cerdas bertenaga Machine Learning (K-Means) untuk memetakan segmen pelanggan Anda. Dirancang khusus untuk mempermudah pengambilan keputusan strategis eksekutif bisnis dan data scientist.</div>
+    <div class="hero-title">Enterprise Customer Insight AI</div>
+    <div class="hero-subtitle">Platform analitik data terstruktur bertenaga Machine Learning untuk memetakan perilaku dan preferensi segmen pelanggan secara presisi.</div>
 </div>
 """, unsafe_allow_html=True)
 
 # =============================================================================
-# 2. MANAJEMEN DATA & CACHING PIPELINE
+# 2. DATA PIPELINE & PREPROCESSING
 # =============================================================================
 
 @st.cache_data(ttl=3600)
 def load_and_clean_data(file_source):
-    """
-    Memuat dataset dari CSV, melakukan pembersihan data awal, 
-    dan mengembalikan DataFrame pandas yang sudah siap pakai.
-    Menggunakan st.cache_data agar komputasi tidak berulang.
-    """
+    """Memuat dataset dari CSV dan menghapus duplikasi data."""
     try:
         df = pd.read_csv(file_source)
-        # Menghapus duplikasi jika ada
         df.drop_duplicates(inplace=True)
         return df
     except Exception as e:
         st.error(f"Gagal memuat data: {str(e)}")
         return None
 
-# Inisialisasi Session State
-if 'model_trained' not in st.session_state:
-    st.session_state['model_trained'] = False
-if 'df_processed' not in st.session_state:
-    st.session_state['df_processed'] = None
-
 # =============================================================================
-# 3. SIDEBAR KONTROL & PARAMETER MODEL
+# 3. SIDEBAR CONFIGURATION
 # =============================================================================
-st.sidebar.markdown("## ⚙️ Konfigurasi Sistem")
-st.sidebar.markdown("Unggah data Anda atau gunakan data *default* dari sistem.")
+st.sidebar.markdown("### Konfigurasi Sistem")
+st.sidebar.markdown("Unggah database pelanggan Anda dalam format CSV.")
 
 DEFAULT_CSV = "Mall_Customers.csv"
-uploaded_file = st.sidebar.file_uploader("📂 Unggah Dataset (CSV)", type=["csv"])
+uploaded_file = st.sidebar.file_uploader("Unggah Dataset (CSV)", type=["csv"])
 
 if uploaded_file is not None:
     df_raw = load_and_clean_data(uploaded_file)
-    st.sidebar.success(f"Data '{uploaded_file.name}' berhasil dimuat!")
+    st.sidebar.success(f"Data {uploaded_file.name} berhasil dimuat.")
 else:
     if os.path.exists(DEFAULT_CSV):
         df_raw = load_and_clean_data(DEFAULT_CSV)
-        st.sidebar.info("Menggunakan dataset sampel (Mall_Customers.csv).")
+        st.sidebar.info("Menggunakan database sampel default.")
     else:
         st.sidebar.error("Dataset default tidak ditemukan. Harap unggah data.")
         st.stop()
 
-# Validasi & Dapatkan Kolom Numerik
+# Deteksi Kolom Numerik
 numeric_cols = df_raw.select_dtypes(include=np.number).columns.tolist()
-# Filter out customer ID columns if possible (usually containing ID in the name)
 non_id_numeric_cols = [col for col in numeric_cols if "id" not in col.lower()]
 if len(non_id_numeric_cols) < 2:
-    # Fallback to all numeric cols if we filtered out too much
     non_id_numeric_cols = numeric_cols
 
 if len(non_id_numeric_cols) < 2:
-    st.error("Dataset harus memiliki minimal 2 kolom numerik untuk dianalisis.")
+    st.error("Dataset minimal harus memiliki 2 kolom bertipe angka.")
     st.stop()
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 🎛️ Fitur Segmentasi AI")
+st.sidebar.markdown("### Fitur Analisis")
 
-# Pemilihan Kolom Dinamis (Multi-select)
-st.sidebar.markdown("Pilih kolom numerik yang ingin digunakan oleh AI Clustering Engine:")
-# Guess default columns based on Mall Customers structure
+# Multi-select untuk fitur klastering
 default_selections = []
 for kw in ["age", "income", "score", "belanja", "pendapatan", "usia"]:
     for col in non_id_numeric_cols:
         if kw in col.lower() and col not in default_selections:
             default_selections.append(col)
 
-# If guess fails, default to first 3 columns
 if len(default_selections) < 2:
     default_selections = non_id_numeric_cols[:min(3, len(non_id_numeric_cols))]
 
@@ -321,159 +286,189 @@ SELECTED_FEATURES = st.sidebar.multiselect(
 )
 
 if len(SELECTED_FEATURES) < 2:
-    st.sidebar.warning("⚠️ Harap pilih minimal 2 kolom fitur untuk melakukan klastering.")
+    st.sidebar.warning("Harap pilih minimal 2 fitur untuk segmentasi.")
     st.stop()
 
-# Menghapus baris yang memiliki nilai NaN pada kolom fitur yang dipilih
-df_clean = df_raw.dropna(subset=SELECTED_FEATURES).reset_index(drop=True)
+# Preprocessing: Pilihan Normalisasi & Outlier Filtering
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Preprocessing Data")
+scaler_choice = st.sidebar.selectbox(
+    "Metode Normalisasi Skala",
+    options=["StandardScaler (Z-Score)", "MinMaxScaler (0-1 Scale)"],
+    index=0
+)
+
+filter_outliers = st.sidebar.checkbox("Filter Data Outlier (Z-Score)", value=False)
+z_threshold = 3.0
+if filter_outliers:
+    z_threshold = st.sidebar.slider("Ambang Batas Outlier (Std Dev)", min_value=1.5, max_value=4.0, value=3.0, step=0.5)
+
+# Terapkan Preprocessing & Pembersihan Data
+if filter_outliers:
+    # Cari nilai Z-score untuk fitur terpilih
+    mean_vals = df_raw[SELECTED_FEATURES].mean()
+    std_vals = df_raw[SELECTED_FEATURES].std()
+    z_scores = np.abs((df_raw[SELECTED_FEATURES] - mean_vals) / std_vals)
+    
+    # Filter baris yang tidak melebihi ambang batas di seluruh fitur terpilih
+    filtered_mask = (z_scores < z_threshold).all(axis=1)
+    df_clean = df_raw[filtered_mask].dropna(subset=SELECTED_FEATURES).reset_index(drop=True)
+    removed_count = len(df_raw) - len(df_clean)
+    st.sidebar.caption(f"Berhasil memfilter {removed_count} baris pencilan.")
+else:
+    df_clean = df_raw.dropna(subset=SELECTED_FEATURES).reset_index(drop=True)
+
 X = df_clean[SELECTED_FEATURES]
 
-# Parameter Algoritma
+# Konfigurasi Parameter K-Means
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 🧠 Tuning Parameter K-Means")
-n_clusters = st.sidebar.slider("Jumlah Cluster (K)", min_value=2, max_value=10, value=5, step=1)
-max_iter = st.sidebar.number_input("Maksimal Iterasi", min_value=100, max_value=1000, value=300, step=50)
-random_seed = st.sidebar.number_input("Random State (Seed)", value=42)
+st.sidebar.markdown("### Parameter K-Means")
+n_clusters = st.sidebar.slider("Jumlah Segmen (K)", min_value=2, max_value=10, value=5, step=1)
+max_iter = st.sidebar.number_input("Iterasi Maksimal", min_value=100, max_value=1000, value=300, step=50)
+random_seed = st.sidebar.number_input("State Pengacak (Seed)", value=42)
 
 # =============================================================================
-# 4. PIPELINE MACHINE LEARNING (TRAINING & EVALUATING)
+# 4. INISIALISASI SESSION STATE & PEMETAAN LABEL KLASTER CUSTOM
 # =============================================================================
-# Data Scaling (Standardisasi adalah hal wajib dalam jarak Euclidean seperti K-Means)
-scaler = StandardScaler()
+# Inisialisasi session state untuk nama klaster kustom jika belum ada
+if 'cluster_names' not in st.session_state:
+    st.session_state['cluster_names'] = {}
+
+# Siapkan nama label default untuk meminimalkan jeda
+custom_names = {}
+for idx in range(n_clusters):
+    key = f"cname_{idx}"
+    if key not in st.session_state:
+        st.session_state[key] = f"Segment {idx+1}"
+    custom_names[idx] = st.session_state[key]
+
+# =============================================================================
+# 5. PEMROSESAN MODEL MACHINE LEARNING
+# =============================================================================
+# Scaling Fitur
+scaler = StandardScaler() if "StandardScaler" in scaler_choice else MinMaxScaler()
 X_scaled = scaler.fit_transform(X)
 
-# Instansiasi & Fit Model K-Means
+# Model K-Means
 kmeans = KMeans(n_clusters=n_clusters, init='k-means++', max_iter=max_iter, random_state=random_seed, n_init=10)
 cluster_labels = kmeans.fit_predict(X_scaled)
 
-# Menyimpan hasil ke DataFrame
+# Tambahkan label hasil ke DataFrame
 df_clean["Cluster_ID"] = cluster_labels
-df_clean["Cluster_Name"] = "Segmen " + (df_clean["Cluster_ID"] + 1).astype(str)
+df_clean["Cluster_Name"] = df_clean["Cluster_ID"].map(custom_names)
 
-st.session_state['model_trained'] = True
-st.session_state['df_processed'] = df_clean
-
-# Perhitungan Metrik Evaluasi Kinerja Model
+# Evaluasi Metrik
 sil_score = silhouette_score(X_scaled, cluster_labels)
 db_score = davies_bouldin_score(X_scaled, cluster_labels)
 ch_score = calinski_harabasz_score(X_scaled, cluster_labels)
 
-# Kamus Persona Bisnis (Diasumsikan K=5 optimal untuk default Mall Customers)
-PERSONA_DB = {
-    0: {"name": "Premium / High Rollers", "color": "#EF4444", "icon": "👑", "desc": "Pendapatan tinggi, pengeluaran tinggi. Berikan penawaran eksklusif dan layanan VIP."},
-    1: {"name": "Conservative / Savers", "color": "#3B82F6", "icon": "🏦", "desc": "Pendapatan tinggi, pengeluaran rendah. Tawarkan program investasi jangka panjang atau cashback menarik."},
-    2: {"name": "Standard / Loyalists", "color": "#10B981", "icon": "🤝", "desc": "Pendapatan rata-rata, pengeluaran stabil. Berikan program loyalitas berkala untuk menjaga retensi."},
-    3: {"name": "Impulse / Bargain Hunters", "color": "#F59E0B", "icon": "🏷️", "desc": "Pendapatan rendah, pengeluaran tinggi. Targetkan dengan promo flash sale, diskon besar, dan penawaran berbatas waktu."},
-    4: {"name": "Passive / Needs-Only", "color": "#64748B", "icon": "🛒", "desc": "Pendapatan rendah, pengeluaran rendah. Berikan promo kebutuhan pokok sehari-hari dengan harga ekonomis."}
+# Kamus Profil Persona Bisnis (Default fallback untuk dataset Mall Customers)
+PERSONA_PRESETS = {
+    0: {"name": "Premium / High Rollers", "color": "#F43F5E", "desc": "Pendapatan tinggi, pengeluaran tinggi. Fokus pada program apresiasi pelanggan setia, peluncuran produk premium eksklusif, dan layanan personal."},
+    1: {"name": "Thrifty Savers", "color": "#3B82F6", "desc": "Pendapatan tinggi, pengeluaran rendah. Targetkan dengan promo penawaran bernilai tinggi, cashbacks, dan keunggulan utilitas jangka panjang."},
+    2: {"name": "Core Loyalists", "color": "#10B981", "desc": "Pendapatan rata-rata, pengeluaran stabil. Berikan program poin loyalitas berjenjang secara berkala untuk menjaga retensi jangka panjang."},
+    3: {"name": "Spontaneous Shoppers", "color": "#F59E0B", "desc": "Pendapatan rendah, pengeluaran tinggi. Tawarkan produk bundling, diskon kilat, dan opsi pembayaran fleksibel."},
+    4: {"name": "Frugal Essentials", "color": "#64748B", "desc": "Pendapatan rendah, pengeluaran rendah. Fokus pada promosi produk kebutuhan dasar dengan harga hemat dan diskon volume produk pokok."}
 }
 
-def get_persona_info(cluster_id, total_k):
-    """Mengembalikan data persona berdasarkan ID, dengan fallback otomatis jika K > 5 atau dataset bukan mall customers"""
-    # Gunakan persona preset jika jumlah cluster 5 dan fitur yang dipilih mengandung kata kunci income & spending
+def get_persona_styling(cluster_id, total_k):
+    """Mengembalikan warna aksen dan rekomendasi strategi berdasarkan ID cluster secara konsisten."""
     is_mall_dataset = any("income" in f.lower() or "pendapatan" in f.lower() for f in SELECTED_FEATURES)
     
-    if total_k == 5 and is_mall_dataset and cluster_id in PERSONA_DB:
-        return PERSONA_DB[cluster_id]
-    
-    # Warna dinamis
-    colors = ["#EF4444", "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#64748B", "#06B6D4"]
+    if total_k == 5 and is_mall_dataset and cluster_id in PERSONA_PRESETS:
+        return PERSONA_PRESETS[cluster_id]
+        
+    colors = ["#6366F1", "#3B82F6", "#10B981", "#F59E0B", "#F43F5E", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#64748B"]
     color = colors[cluster_id % len(colors)]
-    icons = ["🎯", "💡", "🔥", "🚀", "🌟", "⚡", "🌈", "🍀", "💎", "🧩"]
-    icon = icons[cluster_id % len(icons)]
-    
     return {
-        "name": f"Segmen Dinamis {cluster_id+1}",
+        "name": f"Segment {cluster_id+1}",
         "color": color,
-        "icon": icon,
-        "desc": f"Pelanggan dengan karakteristik terstandarisasi klaster {cluster_id+1}. Silakan tinjau koordinat sentroid di tab AI Clustering Engine."
+        "desc": f"Segmen data klaster ke-{cluster_id+1}. Analisis profil sentroid lengkap dapat ditinjau pada tab AI Clustering Engine."
     }
 
+# Mapping Warna Plotly
+color_map = {custom_names[k]: get_persona_styling(k, n_clusters)["color"] for k in range(n_clusters)}
+
 # =============================================================================
-# 5. ANTARMUKA UTAMA (TABS STRUCTURE)
+# 6. ANTARMUKA UTAMA (TAB SYSTEM)
 # =============================================================================
 tab1, tab_tutorial, tab2, tab3, tab4, tab5 = st.tabs([
-    "📊 Executive Summary", 
-    "📖 Data Tutorial & Schema",
-    "📈 Exploratory Data Analysis", 
-    "🧠 AI Clustering Engine", 
-    "🔮 Predictive Simulator", 
-    "📁 Data Export & Reports"
+    "Executive Summary", 
+    "Data Tutorial & Schema",
+    "Exploratory Data Analysis", 
+    "AI Clustering Engine", 
+    "Predictive Simulator", 
+    "Data Export & Reports"
 ])
 
 # -----------------------------------------------------------------------------
-# TAB 1: EXECUTIVE SUMMARY (Business View)
+# TAB 1: EXECUTIVE SUMMARY
 # -----------------------------------------------------------------------------
 with tab1:
-    st.markdown("### 📋 Ringkasan Kinerja Segmentasi")
-    st.markdown("Ikhtisar demografi dan pembagian pangsa pasar pelanggan Anda berdasarkan pemrosesan AI.")
+    st.markdown("### Analisis Strategis Segmen Pelanggan")
+    st.markdown("Berikut adalah visualisasi pangsa pasar dan karakteristik utama kelompok pelanggan yang berhasil diidentifikasi.")
     
-    # KPI Metrics menggunakan HTML kustom
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    with kpi1:
-        st.markdown(f'<div class="metric-container"><div class="metric-title">Total Pelanggan</div><div class="metric-value">{len(df_clean)}</div></div>', unsafe_allow_html=True)
-    with kpi2:
-        st.markdown(f'<div class="metric-container"><div class="metric-title">Jumlah Segmen (K)</div><div class="metric-value">{n_clusters}</div></div>', unsafe_allow_html=True)
-    with kpi3:
-        # Find age or default to first selected feature
-        age_col = next((f for f in SELECTED_FEATURES if "age" in f.lower() or "usia" in f.lower()), SELECTED_FEATURES[0])
-        avg_val1 = int(df_clean[age_col].mean())
-        st.markdown(f'<div class="metric-container"><div class="metric-title">Rerata {age_col}</div><div class="metric-value">{avg_val1}</div></div>', unsafe_allow_html=True)
-    with kpi4:
-        # Find income or default to second selected feature
-        inc_col = next((f for f in SELECTED_FEATURES if "income" in f.lower() or "pendapatan" in f.lower() or "gaji" in f.lower()), SELECTED_FEATURES[1])
-        avg_val2 = round(df_clean[inc_col].mean(), 1)
-        st.markdown(f'<div class="metric-container"><div class="metric-title">Rerata {inc_col}</div><div class="metric-value">{avg_val2}</div></div>', unsafe_allow_html=True)
+    # Ringkasan KPI
+    kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
+    with kpi_col1:
+        st.markdown(f'<div class="metric-container"><div class="metric-title">Total Pelanggan Teranalisis</div><div class="metric-value">{len(df_clean)}</div></div>', unsafe_allow_html=True)
+    with kpi_col2:
+        st.markdown(f'<div class="metric-container"><div class="metric-title">Jumlah Segmen Model</div><div class="metric-value">{n_clusters}</div></div>', unsafe_allow_html=True)
+    with kpi_col3:
+        target_age_col = next((f for f in SELECTED_FEATURES if "age" in f.lower() or "usia" in f.lower()), SELECTED_FEATURES[0])
+        avg_val1 = round(df_clean[target_age_col].mean(), 1)
+        st.markdown(f'<div class="metric-container"><div class="metric-title">Rerata {target_age_col}</div><div class="metric-value">{avg_val1}</div></div>', unsafe_allow_html=True)
+    with kpi_col4:
+        target_inc_col = next((f for f in SELECTED_FEATURES if "income" in f.lower() or "pendapatan" in f.lower() or "gaji" in f.lower()), SELECTED_FEATURES[1])
+        avg_val2 = round(df_clean[target_inc_col].mean(), 1)
+        st.markdown(f'<div class="metric-container"><div class="metric-title">Rerata {target_inc_col}</div><div class="metric-value">{avg_val2}</div></div>', unsafe_allow_html=True)
         
     st.markdown("---")
-    st.markdown("### 🎯 Profil Persona Pelanggan")
+    st.markdown("### Profil Segmen & Rekomendasi Target")
     
-    # Kalkulasi sentroid untuk profil
-    agg_dict = {f: 'mean' for f in SELECTED_FEATURES}
-    agg_dict["Cluster_Name"] = 'count'
+    # Kelompokkan profil rata-rata per klaster
+    agg_rules = {f: 'mean' for f in SELECTED_FEATURES}
+    agg_rules["Cluster_ID"] = 'count'
+    cluster_profiles = df_clean.groupby("Cluster_ID").agg(agg_rules).rename(columns={"Cluster_ID": "Jumlah Anggota"}).round(2)
     
-    cluster_profiles = df_clean.groupby("Cluster_ID").agg(agg_dict).rename(columns={"Cluster_Name": "Jumlah Orang"}).round(2)
-    
-    # Generate Kartu HTML untuk masing-masing klaster
+    # Render kartu informasi segmen
     for idx, row in cluster_profiles.iterrows():
-        p_info = get_persona_info(idx, n_clusters)
-        persentase = round((row['Jumlah Orang'] / len(df_clean)) * 100, 1)
+        p_style = get_persona_styling(idx, n_clusters)
+        label_tampilan = custom_names[idx]
+        persen_populasi = round((row['Jumlah Anggota'] / len(df_clean)) * 100, 1)
         
-        # Build features text for the card
         feature_stats = ""
         for f in SELECTED_FEATURES:
-            feature_stats += f'<div class="stat-item"><div class="stat-label">📊 Rerata {f}</div><div class="stat-val">{row[f]}</div></div>'
+            feature_stats += f'<div class="stat-item"><div class="stat-label">Rerata {f}</div><div class="stat-val">{row[f]}</div></div>'
             
         card_html = f"""
-        <div class="insight-card" style="border-left-color: {p_info['color']};">
+        <div class="insight-card" style="border-left-color: {p_style['color']};">
             <div class="insight-header">
-                <div class="insight-title">{p_info['icon']} {p_info['name']}</div>
-                <div class="insight-badge" style="background-color: {p_info['color']};">{persentase}% dari Populasi</div>
+                <div class="insight-title">{label_tampilan} (ID: {idx+1})</div>
+                <div class="insight-badge" style="background-color: {p_style['color']};">{persen_populasi}% dari Populasi</div>
             </div>
             <div class="insight-stats">
-                <div class="stat-item"><div class="stat-label">👥 Jumlah Anggota</div><div class="stat-val">{int(row['Jumlah Orang'])} Orang</div></div>
+                <div class="stat-item"><div class="stat-label">Total Anggota</div><div class="stat-val">{int(row['Jumlah Anggota'])} Orang</div></div>
                 {feature_stats}
             </div>
             <div class="strategy-box">
-                <b>🔍 Analisis Strategis & Rekomendasi:</b> {p_info['desc']}
+                <strong>Rekomendasi Aksi & Target:</strong> {p_style['desc']}
             </div>
         </div>
         """
         st.markdown(card_html, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# TAB: DATA TUTORIAL & SCHEMA (HOW-TO SECTION)
+# TAB 2: DATA SCHEMAS & TUTORIAL
 # -----------------------------------------------------------------------------
 with tab_tutorial:
-    st.markdown("### 📖 Panduan Penggunaan & Schema Database CSV")
-    st.markdown("Sebelum mengunggah database Anda sendiri ke platform, harap pastikan data Anda mengikuti panduan format di bawah agar AI Clustering Engine dapat bekerja dengan akurat.")
+    st.markdown("### Panduan Persiapan Database CSV")
+    st.markdown("Pastikan dataset yang Anda unggah mengikuti struktur tabel di bawah ini agar pemrosesan algoritma berjalan optimal.")
     
     col_t1, col_t2 = st.columns([1.2, 0.8])
     
     with col_t1:
-        st.markdown("#### 1. Urutan & Format Kolom yang Direkomendasikan")
-        st.markdown("""
-        Meskipun mesin pemrosesan kami cerdas dan memungkinkan pemilihan fitur secara dinamis, format default yang paling optimal adalah dataset transaksi/pelanggan retail dengan kolom berikut:
-        """)
+        st.markdown("#### Struktur Tabel Database yang Direkomendasikan")
         
         schema_data = {
             "Nama Kolom (Header)": [
@@ -484,11 +479,11 @@ with tab_tutorial:
                 "Spending Score (1-100)"
             ],
             "Tipe Data": [
-                "Numeric (Integer)",
-                "Categorical (Text)",
-                "Numeric (Integer)",
-                "Numeric (Float/Integer)",
-                "Numeric (Integer)"
+                "Numerik (Integer)",
+                "Teks / Kategori",
+                "Numerik (Integer)",
+                "Numerik (Float/Integer)",
+                "Numerik (Integer)"
             ],
             "Contoh Nilai": [
                 "1, 2, 3...",
@@ -497,67 +492,65 @@ with tab_tutorial:
                 "15, 60, 137...",
                 "39, 81, 5..."
             ],
-            "Keterangan / Validasi": [
-                "ID Unik Pelanggan (Akan dilewati otomatis oleh ML)",
-                "Jenis kelamin (Dapat dianalisis pada visualisasi EDA)",
-                "Usia pelanggan dalam tahun (10 - 100)",
-                "Pendapatan tahunan dalam ribuan USD ($k) / Rupiah",
-                "Skor belanja buatan sistem (skala 1 - 100)"
+            "Aturan Validasi": [
+                "ID Unik Pelanggan (Tidak dimasukkan ke fitur latih ML)",
+                "Opsional (Hanya untuk analisa deskriptif silang di EDA)",
+                "Usia dalam tahun (minimal 10)",
+                "Pendapatan tahunan dalam satuan k$ atau angka bulat",
+                "Skor belanja buatan sistem (skala 1 s.d. 100)"
             ]
         }
         st.table(pd.DataFrame(schema_data))
         
-        st.markdown("#### 2. Kriteria Kelayakan Data (Data Validation)")
+        st.markdown("#### Validasi Kelayakan Data Sebelum Unggah")
         st.markdown("""
-        * **Tidak Boleh Ada Missing Value (NaN/Null)** pada kolom fitur yang dipilih. Baris yang memiliki nilai kosong akan dihapus secara otomatis.
-        * **Minimal 2 Kolom Numerik** wajib disertakan agar model K-Means dapat menghitung jarak geometris antarpelanggan.
-        * **Skala Nilai**: Model kami telah mengintegrasikan modul standardisasi data menggunakan `StandardScaler` (Z-Score Normalization), sehingga perbedaan satuan (misal: usia puluhan tahun dan gaji puluhan ribu) akan dinormalisasi secara otomatis.
+        * **Pembersihan Missing Value**: Platform ini otomatis menghapus baris yang memiliki nilai kosong pada kolom analisis yang dipilih.
+        * **Normalisasi Skala Otomatis**: Normalisasi (Z-Score atau MinMax) diterapkan untuk menghindari dominasi fitur dengan nominal besar (seperti Gaji) atas fitur nominal kecil (seperti Usia).
+        * **Filter Outlier**: Bila diaktifkan di sidebar, sistem akan menyaring nilai data ekstrim yang dapat menggeser sentroid K-Means.
         """)
         
     with col_t2:
-        st.markdown("#### 📥 Unduh Dataset Sampel")
-        st.markdown("Gunakan dataset sampel standar yang telah kami siapkan untuk langsung mencoba performa platform.")
+        st.markdown("#### Unduh Berkas Contoh")
+        st.markdown("Silakan unduh file sampel database mall customer di bawah ini sebagai acuan format:")
         
-        # Read the file and create download button
         if os.path.exists(DEFAULT_CSV):
             with open(DEFAULT_CSV, "rb") as f:
                 csv_bytes = f.read()
             st.download_button(
-                label="📥 Unduh Sampel Mall_Customers.csv",
+                label="Unduh Sampel Mall_Customers.csv",
                 data=csv_bytes,
                 file_name="Mall_Customers.csv",
                 mime="text/csv",
                 use_container_width=True
             )
         else:
-            st.warning("File sampel tidak ditemukan.")
+            st.warning("File contoh default Mall_Customers.csv tidak ditemukan.")
             
         st.markdown("---")
-        st.markdown("#### 💡 Langkah Pemrosesan Data:")
+        st.markdown("#### Alur Analisis Data Platform:")
         st.markdown("""
         <div class="step-card">
-            <span class="step-badge">1</span> <b>Unduh</b> sampel CSV di atas atau siapkan database Anda.
+            <span class="step-badge">1</span> Unduh file sampel CSV atau siapkan file database pribadi Anda.
         </div>
         <div class="step-card">
-            <span class="step-badge">2</span> <b>Unggah</b> file Anda melalui menu sidebar di sebelah kiri.
+            <span class="step-badge">2</span> Unggah file ke sistem menggunakan area drag-and-drop di sidebar kiri.
         </div>
         <div class="step-card">
-            <span class="step-badge">3</span> <b>Pilih Fitur Kunci</b> numerik pada sidebar yang ingin dianalisis.
+            <span class="step-badge">3</span> Tentukan metode normalisasi dan aktifkan penyaringan outlier bila diperlukan.
         </div>
         <div class="step-card">
-            <span class="step-badge">4</span> <b>Tentukan K</b> menggunakan bantuan grafik Elbow Method di Tab AI Clustering Engine.
+            <span class="step-badge">4</span> Gunakan grafik sikut (Elbow Curve) di tab mesin klastering untuk mencari nilai K paling optimal.
         </div>
         """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# TAB 2: EXPLORATORY DATA ANALYSIS (EDA)
+# TAB 3: EXPLORATORY DATA ANALYSIS (EDA)
 # -----------------------------------------------------------------------------
 with tab2:
-    st.markdown("### 📈 Analisis Statistik Deskriptif (EDA)")
-    st.markdown("Pahami distribusi data dan korelasi antar variabel sebelum model ML diterapkan.")
+    st.markdown("### Analisis Statistik Deskriptif")
+    st.markdown("Pahami persebaran fitur dan korelasi awal dari dataset yang diunggah.")
     
-    # 1. Summary Statistics Table
-    st.markdown("#### 📊 Statistik Ringkasan Dataset")
+    st.markdown("#### Ringkasan Statistik Dasar")
     st.dataframe(df_clean[SELECTED_FEATURES].describe().round(2), use_container_width=True)
     
     st.markdown("---")
@@ -565,49 +558,51 @@ with tab2:
     eda_col1, eda_col2 = st.columns(2)
     
     with eda_col1:
-        st.markdown("#### 🎯 Distribusi Variabel Tunggal")
-        dist_feature = st.selectbox("Pilih variabel untuk dianalisis:", SELECTED_FEATURES, index=0)
+        st.markdown("#### Distribusi Sebaran Fitur")
+        dist_feature = st.selectbox("Variabel yang Dianalisa:", SELECTED_FEATURES, index=0)
         
         fig_hist = px.histogram(
             df_clean, x=dist_feature, marginal="box", 
-            color_discrete_sequence=['#3B82F6'], opacity=0.85,
-            title=f"Distribusi dan Pencilan untuk {dist_feature}"
+            color_discrete_sequence=['#4F46E5'], opacity=0.8,
+            title=f"Distribusi Fitur: {dist_feature}"
         )
         fig_hist.update_layout(height=400, margin=dict(l=20, r=20, t=40, b=20), plot_bgcolor="#FFFFFF")
-        fig_hist.update_xaxes(showgrid=True, gridcolor="#E2E8F0")
-        fig_hist.update_yaxes(showgrid=True, gridcolor="#E2E8F0")
+        fig_hist.update_xaxes(showgrid=True, gridcolor="#F1F5F9")
+        fig_hist.update_yaxes(showgrid=True, gridcolor="#F1F5F9")
         st.plotly_chart(fig_hist, use_container_width=True)
         
-        # Gender Analysis if available
+        # Gender Analysis
         gender_col = next((col for col in df_clean.columns if "gender" in col.lower() or "kelamin" in col.lower()), None)
         if gender_col:
-            st.markdown(f"#### 👥 Distribusi berdasarkan {gender_col}")
+            st.markdown(f"#### Distribusi Berdasarkan Kategori {gender_col}")
             fig_gender = px.histogram(
                 df_clean, x=dist_feature, color=gender_col, 
                 marginal="rug", barmode="overlay",
-                color_discrete_sequence=['#3B82F6', '#EC4899']
+                color_discrete_sequence=['#4F46E5', '#EC4899']
             )
             fig_gender.update_layout(height=350, margin=dict(l=20, r=20, t=30, b=20), plot_bgcolor="#FFFFFF")
             st.plotly_chart(fig_gender, use_container_width=True)
         
     with eda_col2:
-        st.markdown("#### 🔗 Hubungan Pairwise Antar Variabel (Scatter Plot)")
+        st.markdown("#### Korelasi Tren Pairwise")
         
-        x_axis_scatter = st.selectbox("Pilih Sumbu X Scatter:", SELECTED_FEATURES, index=min(1, len(SELECTED_FEATURES)-1))
-        y_axis_scatter = st.selectbox("Pilih Sumbu Y Scatter:", SELECTED_FEATURES, index=0)
+        x_axis_scatter = st.selectbox("Variabel Sumbu X:", SELECTED_FEATURES, index=min(1, len(SELECTED_FEATURES)-1))
+        y_axis_scatter = st.selectbox("Variabel Sumbu Y:", SELECTED_FEATURES, index=0)
         
         color_by_col = gender_col if gender_col else None
         
         fig_scatter = px.scatter(
             df_clean, x=x_axis_scatter, y=y_axis_scatter, 
             color=color_by_col,
-            color_discrete_sequence=['#3B82F6', '#EC4899'] if color_by_col else ['#10B981'],
-            opacity=0.75, title=f"Korelasi Tren: {x_axis_scatter} vs {y_axis_scatter}"
+            color_discrete_sequence=['#4F46E5', '#EC4899'] if color_by_col else ['#10B981'],
+            opacity=0.75, title=f"Korelasi Scatter: {x_axis_scatter} vs {y_axis_scatter}"
         )
         fig_scatter.update_layout(height=400, margin=dict(l=20, r=20, t=40, b=20), plot_bgcolor="#FFFFFF")
+        fig_scatter.update_xaxes(showgrid=True, gridcolor="#F1F5F9")
+        fig_scatter.update_yaxes(showgrid=True, gridcolor="#F1F5F9")
         st.plotly_chart(fig_scatter, use_container_width=True)
         
-        st.markdown("#### 🌡️ Matriks Korelasi (Heatmap)")
+        st.markdown("#### Heatmap Matriks Korelasi")
         corr = df_clean[SELECTED_FEATURES].corr()
         fig_corr = px.imshow(
             corr, text_auto=True, aspect="auto", 
@@ -616,21 +611,34 @@ with tab2:
         )
         fig_corr.update_layout(height=350, margin=dict(l=20, r=20, t=30, b=20))
         st.plotly_chart(fig_corr, use_container_width=True)
-        
-    st.info("💡 **Insight EDA:** Korelasi positif kuat (mendekati 1) menunjukkan kedua fitur bergerak searah. Deteksi pencilan pada boxplot di atas penting karena K-Means sensitif terhadap nilai ekstrim.")
 
 # -----------------------------------------------------------------------------
-# TAB 3: AI CLUSTERING ENGINE (Data Science View)
+# TAB 3: AI CLUSTERING ENGINE
 # -----------------------------------------------------------------------------
 with tab3:
-    st.markdown("### 🧠 Kedalaman Model Machine Learning")
-    st.markdown("Visualisasi spasial hasil segmentasi algoritma K-Means, evaluasi metrik matematis, dan analisis Elbow Method.")
+    st.markdown("### Mesin Partisi Segmentasi K-Means")
+    st.markdown("Analisis optimasi pengelompokan segmen, metrik validasi, dan kustomisasi penamaan segmen.")
     
-    # 1. Elbow Method Section
-    st.markdown("#### 📐 Menentukan Jumlah Cluster Optimal (Elbow Method)")
-    st.caption("Menghitung WCSS (Within-Cluster Sum of Squares) untuk memandu penentuan jumlah segmentasi K terbaik. Cari bagian lekukan 'sikut' di grafik.")
+    # Kustomisasi Nama Label Segmen
+    st.markdown("#### Penamaan Kustom Label Segmen")
+    st.caption("Ubah nama segmen di bawah untuk merefleksikan istilah bisnis Anda. Nama baru akan otomatis diperbarui ke seluruh grafik, simulator, dan ekspor.")
     
-    # Precompute WCSS for K=1 to 10
+    # Gunakan form input kolom
+    renamer_cols = st.columns(min(3, n_clusters))
+    for idx in range(n_clusters):
+        col_idx = idx % 3
+        with renamer_cols[col_idx]:
+            st.text_input(
+                label=f"Nama Segmen ID {idx+1}", 
+                key=f"cname_{idx}"
+            )
+            
+    st.markdown("---")
+    
+    # Elbow Method Plot
+    st.markdown("#### Evaluasi Jumlah Klaster Optimal (Elbow Method)")
+    
+    # Hitung WCSS dinamis
     wcss = []
     k_range = range(1, 11)
     for k in k_range:
@@ -642,59 +650,55 @@ with tab3:
     fig_elbow.add_trace(go.Scatter(
         x=list(k_range), y=wcss, 
         mode='lines+markers',
-        line=dict(color='#2563EB', width=3),
-        marker=dict(size=8, color='#0F172A', symbol='circle')
+        line=dict(color='#4F46E5', width=3),
+        marker=dict(size=8, color='#0F172A', symbol='square')
     ))
-    # Highlight selected K
-    fig_elbow.add_vline(x=n_clusters, line_width=2, line_dash="dash", line_color="#EF4444")
+    fig_elbow.add_vline(x=n_clusters, line_width=1.5, line_dash="dash", line_color="#F43F5E")
     fig_elbow.add_annotation(x=n_clusters, y=wcss[n_clusters-1], text=f"Pilihan Anda (K={n_clusters})", showarrow=True, arrowhead=1, yshift=10)
     
     fig_elbow.update_layout(
-        title="Kurva WCSS vs Jumlah Cluster (Elbow Curve)",
-        xaxis_title="Jumlah Cluster (K)",
-        yaxis_title="WCSS (Inertia)",
-        height=350,
+        title="Kurva WCSS vs Jumlah Klaster (Elbow Curve)",
+        xaxis_title="Jumlah Klaster (K)",
+        yaxis_title="Within-Cluster Sum of Squares (Inertia)",
+        height=320,
         margin=dict(l=20, r=20, t=40, b=20),
         plot_bgcolor="#FFFFFF"
     )
-    fig_elbow.update_xaxes(showgrid=True, gridcolor="#E2E8F0", tickmode='linear')
-    fig_elbow.update_yaxes(showgrid=True, gridcolor="#E2E8F0")
+    fig_elbow.update_xaxes(showgrid=True, gridcolor="#F1F5F9", tickmode='linear')
+    fig_elbow.update_yaxes(showgrid=True, gridcolor="#F1F5F9")
     st.plotly_chart(fig_elbow, use_container_width=True)
     
     st.markdown("---")
     
-    # 2. Metrik Evaluasi Kualitas Klaster
-    st.markdown("#### ⚙️ Validasi Metrik Evaluasi Model")
-    m_col1, m_col2, m_col3 = st.columns(3)
-    
-    m_col1.metric(
-        label="Silhouette Score (Rapat & Terpisah)", 
+    # Validasi Metrik
+    st.markdown("#### Metrik Kualitas Pemisahan Klaster")
+    mv_1, mv_2, mv_3 = st.columns(3)
+    mv_1.metric(
+        label="Silhouette Score (Mendekati 1.0 Lebih Baik)", 
         value=f"{sil_score:.4f}", 
-        help="Rentang -1 hingga 1. Mendekati 1 menunjukkan klaster terbentuk sangat rapat dan terpisah dari klaster lain dengan sangat baik."
+        help="Evaluasi kerapatan jarak titik ke klasternya dibanding klaster tetangga."
     )
-    m_col2.metric(
-        label="Davies-Bouldin Index (Kerapatan Klaster)", 
+    mv_2.metric(
+        label="Davies-Bouldin Index (Mendekati 0.0 Lebih Baik)", 
         value=f"{db_score:.4f}", 
-        help="Semakin kecil (mendekati 0) semakin baik. Menunjukkan perbandingan ukuran penyebaran klaster dengan jarak antar klaster."
+        help="Evaluasi rasio jarak dalam klaster dengan jarak antar klaster."
     )
-    m_col3.metric(
-        label="Calinski-Harabasz Index (Variansi Jarak)", 
+    mv_3.metric(
+        label="Calinski-Harabasz Index (Skor Tinggi Lebih Baik)", 
         value=f"{ch_score:.1f}", 
-        help="Semakin tinggi skornya, semakin baik. Merupakan rasio jumlah dispersi antar-klaster terhadap dispersi dalam-klaster."
+        help="Evaluasi rasio dispersi antar klaster terhadap dispersi dalam klaster."
     )
     
     st.markdown("---")
     
-    # 3. Visualisasi Peta Scatter (3D & 2D)
+    # Visualisasi Klaster
     plot_col1, plot_col2 = st.columns([1.4, 1])
     
-    # Mapping Warna Konsisten
-    color_map = {f"Segmen {k+1}": get_persona_info(k, n_clusters)["color"] for k in range(n_clusters)}
     df_sorted = df_clean.sort_values(by="Cluster_ID")
     
     with plot_col1:
         if len(SELECTED_FEATURES) >= 3:
-            st.markdown("**Visualisasi 3D Ruang Fitur**")
+            st.markdown("#### Proyeksi Spasial 3 Dimensi")
             fig_3d = px.scatter_3d(
                 df_sorted, 
                 x=SELECTED_FEATURES[0], 
@@ -704,11 +708,11 @@ with tab3:
                 color_discrete_map=color_map,
                 hover_data=SELECTED_FEATURES
             )
-            fig_3d.update_traces(marker=dict(size=5, line=dict(width=1, color='DarkSlateGrey')))
-            fig_3d.update_layout(height=550, margin=dict(l=0, r=0, b=0, t=0))
+            fig_3d.update_traces(marker=dict(size=4.5, line=dict(width=0.5, color='white')))
+            fig_3d.update_layout(height=500, margin=dict(l=0, r=0, b=0, t=0))
             st.plotly_chart(fig_3d, use_container_width=True)
         else:
-            st.markdown("**Visualisasi 2D Fitur yang Dipilih**")
+            st.markdown("#### Proyeksi Spasial 2 Dimensi")
             fig_2d = px.scatter(
                 df_sorted, 
                 x=SELECTED_FEATURES[0], 
@@ -717,96 +721,121 @@ with tab3:
                 color_discrete_map=color_map,
                 hover_data=SELECTED_FEATURES
             )
-            fig_2d.update_traces(marker=dict(size=8, line=dict(width=1, color='white')))
-            fig_2d.update_layout(height=550, margin=dict(l=10, r=10, b=10, t=10), plot_bgcolor="#FFFFFF")
+            fig_2d.update_traces(marker=dict(size=8, line=dict(width=0.5, color='white')))
+            fig_2d.update_layout(height=500, margin=dict(l=10, r=10, b=10, t=10), plot_bgcolor="#FFFFFF")
             st.plotly_chart(fig_2d, use_container_width=True)
-        
+            
     with plot_col2:
-        st.markdown("**Principal Component Analysis (PCA) 2D**")
-        st.caption("Mereduksi seluruh dimensi fitur menjadi 2 komponen utama (PCA) untuk proyeksi 2D yang optimal.")
+        st.markdown("#### Reduksi Komponen Utama 2D (PCA)")
         pca = PCA(n_components=2)
         X_pca = pca.fit_transform(X_scaled)
-        df_pca = pd.DataFrame(X_pca, columns=["PCA 1", "PCA 2"])
-        df_pca["Cluster_Name"] = df_sorted["Cluster_Name"]
+        df_pca = pd.DataFrame(X_pca, columns=["PCA Component 1", "PCA Component 2"])
+        df_pca["Cluster_Name"] = df_sorted["Cluster_Name"].values
         
         fig_pca = px.scatter(
-            df_pca, x="PCA 1", y="PCA 2", color="Cluster_Name", 
-            color_discrete_map=color_map, opacity=0.85
+            df_pca, x="PCA Component 1", y="PCA Component 2", 
+            color="Cluster_Name", color_discrete_map=color_map, 
+            opacity=0.85
         )
-        fig_pca.update_traces(marker=dict(size=8, line=dict(width=0.5, color='white')))
-        fig_pca.update_layout(height=300, margin=dict(l=10, r=10, b=10, t=10), plot_bgcolor="#FFFFFF")
+        fig_pca.update_traces(marker=dict(size=7, line=dict(width=0.5, color='white')))
+        fig_pca.update_layout(height=280, margin=dict(l=10, r=10, b=10, t=10), plot_bgcolor="#FFFFFF")
         st.plotly_chart(fig_pca, use_container_width=True)
         
-        # Porsi Populasi
-        st.markdown("**Porsi Populasi per Segmen**")
-        fig_pie = px.pie(df_sorted, names="Cluster_Name", color="Cluster_Name", color_discrete_map=color_map, hole=0.45)
-        fig_pie.update_layout(height=250, margin=dict(l=10, r=10, b=10, t=10))
+        st.markdown("#### Distribusi Kepadatan Klaster")
+        fig_pie = px.pie(df_sorted, names="Cluster_Name", color="Cluster_Name", color_discrete_map=color_map, hole=0.5)
+        fig_pie.update_layout(height=220, margin=dict(l=10, r=10, b=10, t=10))
         st.plotly_chart(fig_pie, use_container_width=True)
 
-    # 4. Centroid Coordinates Table
-    st.markdown("#### 📍 Koordinat Sentrol (Cluster Centroids)")
-    st.caption("Pusat gravitasi (rata-rata) asli dari masing-masing klaster untuk mengartikan sifat segmen.")
-    # Calculate centroids in original scale
-    centroids = pd.DataFrame(scaler.inverse_transform(kmeans.cluster_centers_), columns=SELECTED_FEATURES)
-    centroids.insert(0, "Cluster_ID", range(n_clusters))
-    centroids["Cluster_Name"] = "Segmen " + (centroids["Cluster_ID"] + 1).astype(str)
+    # 4. Centroid Comparison Bar Chart
+    st.markdown("---")
+    st.markdown("#### Profil Pembanding Centroid Klaster (Skala Normalisasi)")
+    st.caption("Representasi kontribusi nilai relatif dari tiap segmen. Mempermudah perbandingan segmen mana yang memiliki kriteria tinggi, sedang, atau rendah secara komprehensif.")
     
-    # Format table for visualization
-    st.dataframe(centroids.drop(columns="Cluster_ID").set_index("Cluster_Name").round(3), use_container_width=True)
+    # Buat dataframe centroid ternormalisasi
+    centroids_scaled = pd.DataFrame(kmeans.cluster_centers_, columns=SELECTED_FEATURES)
+    centroids_scaled["Cluster_Name"] = [custom_names[idx] for idx in range(n_clusters)]
+    
+    melted_centroids = pd.melt(
+        centroids_scaled, 
+        id_vars=["Cluster_Name"], 
+        value_vars=SELECTED_FEATURES,
+        var_name="Fitur", 
+        value_name="Nilai Relatif (Normalized)"
+    )
+    
+    fig_centroid_compare = px.bar(
+        melted_centroids, 
+        x="Fitur", 
+        y="Nilai Relatif (Normalized)", 
+        color="Cluster_Name",
+        barmode="group", 
+        color_discrete_map=color_map
+    )
+    fig_centroid_compare.update_layout(
+        height=350, 
+        margin=dict(l=20, r=20, t=20, b=20), 
+        plot_bgcolor="#FFFFFF",
+        xaxis_title="",
+        yaxis_title="Deviasi Skala / Skor Relatif"
+    )
+    fig_centroid_compare.update_xaxes(showgrid=True, gridcolor="#F1F5F9")
+    fig_centroid_compare.update_yaxes(showgrid=True, gridcolor="#F1F5F9")
+    st.plotly_chart(fig_centroid_compare, use_container_width=True)
+
+    # Tabel Koordinat Sentroid Asli
+    st.markdown("#### Pusat Gravitasi Sentroid Asli (Original Scale)")
+    original_centroids = pd.DataFrame(scaler.inverse_transform(kmeans.cluster_centers_), columns=SELECTED_FEATURES)
+    original_centroids.insert(0, "Cluster_ID", range(n_clusters))
+    original_centroids["Nama Segmen"] = original_centroids["Cluster_ID"].map(custom_names)
+    st.dataframe(original_centroids.drop(columns="Cluster_ID").set_index("Nama Segmen").round(3), use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# TAB 4: PREDICTIVE SIMULATOR (Deployment / Inference)
+# TAB 4: PREDICTIVE SIMULATOR
 # -----------------------------------------------------------------------------
 with tab4:
-    st.markdown("### 🔮 Simulator Prediksi Data Baru")
-    st.markdown("Fitur *Inference* waktu-nyata. Uji coba algoritma dengan memasukkan data pelanggan baru untuk mengetahui di segmen mana mereka dikelompokkan oleh AI.")
+    st.markdown("### Inferensi Data Pelanggan Baru")
+    st.markdown("Masukkan koordinat data pelanggan baru untuk memprediksi secara waktu-nyata ke segmen mana mereka tergolong.")
     
-    with st.form("inference_form"):
-        st.markdown("Masukkan Data Pelanggan Baru:")
+    with st.form("inference_form_dynamic"):
+        st.markdown("Masukkan Detail Atribut Pelanggan Baru:")
         
-        # Generate inputs dynamically based on selected features
         inputs = {}
-        cols_for_inputs = st.columns(min(3, len(SELECTED_FEATURES)))
+        input_cols = st.columns(min(3, len(SELECTED_FEATURES)))
         
         for i, feature in enumerate(SELECTED_FEATURES):
             col_idx = i % 3
-            with cols_for_inputs[col_idx]:
-                # Find min, max, mean for initial value and boundaries
+            with input_cols[col_idx]:
                 f_min = float(df_clean[feature].min())
                 f_max = float(df_clean[feature].max())
                 f_mean = float(df_clean[feature].mean())
                 
                 inputs[feature] = st.number_input(
                     label=f"{feature} (Rentang: {int(f_min)} - {int(f_max)})",
-                    min_value=f_min * 0.5,
-                    max_value=f_max * 1.5,
+                    min_value=f_min * 0.1,
+                    max_value=f_max * 2.0,
                     value=f_mean,
                     step=(f_max - f_min) / 100.0
                 )
-        
-        submit_infer = st.form_submit_button("Lakukan Prediksi Klaster", use_container_width=True)
+                
+        submit_infer = st.form_submit_button("Prediksi Klasifikasi Segmen", use_container_width=True)
         
         if submit_infer:
-            with st.spinner("Memproses inferensi data baru pada model..."):
-                # Urutkan input sesuai urutan fit()
+            with st.spinner("Menghitung model klasifikasi..."):
                 ordered_input = [inputs[f] for f in SELECTED_FEATURES]
-                # Scale input
                 input_scaled = scaler.transform([ordered_input])
-                # Predict cluster
                 pred_cluster = kmeans.predict(input_scaled)[0]
                 
-                # Fetch Persona Info
-                pred_info = get_persona_info(pred_cluster, n_clusters)
+                label_pred = custom_names[pred_cluster]
+                p_style = get_persona_styling(pred_cluster, n_clusters)
                 
-                # UI Alert untuk hasil
-                st.success(f"Proses komputasi selesai! Pelanggan masuk ke dalam **Segmen {pred_cluster+1}**.")
+                st.success(f"Komputasi berhasil. Pelanggan baru diklasifikasikan ke dalam: {label_pred}.")
                 
                 res_html = f"""
-                <div style="background-color: #FFFFFF; padding: 25px; border-radius: 10px; border-left: 8px solid {pred_info['color']}; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 15px;">
-                    <h3 style="margin-top: 0; color: #0F172A;">{pred_info['icon']} Persona: {pred_info['name']}</h3>
-                    <p style="font-size: 1.1rem; color: #475569;"><b>Strategi yang harus diterapkan:</b><br>{pred_info['desc']}</p>
-                    <hr style="border: 0; border-top: 1px solid #E2E8F0;">
-                    <small style="color: #94A3B8;">Nilai Koordinat Skala Terstandarisasi (Tensor): {input_scaled[0]}</small>
+                <div style="background-color: #FFFFFF; padding: 20px; border-radius: 8px; border-left: 6px solid {p_style['color']}; border-right: 1px solid #E2E8F0; border-top: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0; margin-top: 15px;">
+                    <h4 style="margin-top: 0; color: #0F172A;">Hasil Prediksi: {label_pred}</h4>
+                    <p style="font-size: 0.95rem; color: #475569;"><strong>Strategi Segmentasi yang Direkomendasikan:</strong><br>{p_style['desc']}</p>
+                    <hr style="border: 0; border-top: 1px solid #F1F5F9;">
+                    <code style="font-size: 0.8rem; color: #94A3B8;">Nilai Tensor Input Terstandarisasi: {input_scaled[0]}</code>
                 </div>
                 """
                 st.markdown(res_html, unsafe_allow_html=True)
@@ -815,25 +844,21 @@ with tab4:
 # TAB 5: DATA EXPORT & REPORTS
 # -----------------------------------------------------------------------------
 with tab5:
-    st.markdown("### 📁 Basis Data Klastering & Laporan Ekspor")
-    st.markdown("Lihat tabel lengkap hasil pemrosesan algoritma dan unduh dalam format CSV untuk kebutuhan pelaporan bisnis atau integrasi dengan *dashboard* BI eksternal.")
+    st.markdown("### Manajemen Ekspor Hasil Segmentasi")
+    st.markdown("Unduh seluruh basis data yang telah terklasifikasi untuk integrasi dengan dasbor visualisasi eksternal (BI) atau laporan operasional.")
     
-    # Menampilkan DataFrame
-    st.dataframe(df_clean, use_container_width=True, height=400)
+    # Tampilkan DataFrame
+    st.dataframe(df_clean, use_container_width=True, height=380)
     
-    # Modul Ekspor
-    st.markdown("#### Manajemen Unduhan")
-    st.markdown("Klik tombol di bawah untuk mengekspor tabel di atas yang telah berisi label klasifikasi Machine Learning.")
-    
-    # Generate CSV in memory for download
-    csv_export = df_clean.to_csv(index=False).encode('utf-8')
+    st.markdown("#### Ekspor Database")
+    csv_bytes = df_clean.to_csv(index=False).encode('utf-8')
     st.download_button(
-        label="📥 Ekspor Hasil Segmentasi CSV",
-        data=csv_export,
-        file_name="ML_Clustered_Customers.csv",
+        label="Unduh Database Berlabel (.CSV)",
+        data=csv_bytes,
+        file_name="Customer_Insights_Export.csv",
         mime="text/csv",
         use_container_width=True
     )
     
     st.markdown("---")
-    st.markdown("<div style='text-align: center; color: #64748B; font-size: 0.85rem;'>Versi Aplikasi: 4.0.0-Enterprise | Engine: scikit-learn 1.x | Framework: Streamlit</div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; color: #94A3B8; font-size: 0.8rem;'>System Version: 4.1.0-Minimalist-Enterprise | Backend Engine: scikit-learn | UI Engine: Streamlit</div>", unsafe_allow_html=True)
