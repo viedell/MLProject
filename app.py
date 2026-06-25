@@ -600,7 +600,7 @@ with tab2:
         
         fig_scatter = px.scatter(
             df_clean, x=x_axis_scatter, y=y_axis_scatter, 
-            color=color_by_col, trendline="ols",
+            color=color_by_col,
             color_discrete_sequence=['#3B82F6', '#EC4899'] if color_by_col else ['#10B981'],
             opacity=0.75, title=f"Korelasi Tren: {x_axis_scatter} vs {y_axis_scatter}"
         )
