@@ -463,6 +463,7 @@ for idx in range(n_clusters):
 
 # Terapkan nama khusus ke dataset utama
 df_clean["Cluster_Name"] = df_clean["Cluster_ID"].map(custom_names)
+df_sorted = df_clean.sort_values(by="Cluster_ID")
 
 # Mapping Warna Plotly
 color_map = {custom_names[k]: PERSONA_PRESETS[cluster_persona_mapping[k]]["color"] for k in range(n_clusters)}
