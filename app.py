@@ -730,6 +730,15 @@ with tab_research_lab:
     
     # 2. Elbow Method Plot
     st.markdown("#### Optimasi Jumlah Klaster (Elbow Method)")
+    
+    # Hitung WCSS dinamis untuk grafik sikut (1 s.d. 10)
+    wcss = []
+    k_range = range(1, 11)
+    for k in k_range:
+        km_test = KMeans(n_clusters=k, init='k-means++', max_iter=max_iter, random_state=random_seed, n_init=10)
+        km_test.fit(X_scaled)
+        wcss.append(km_test.inertia_)
+        
     fig_elbow_lab = go.Figure()
     fig_elbow_lab.add_trace(go.Scatter(
         x=list(k_range), y=wcss, 
