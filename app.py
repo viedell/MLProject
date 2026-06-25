@@ -1,298 +1,544 @@
-import streamlit as st
-import pandas as pd
+import os
+import base64
+import warnings
 import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 import plotly.express as px
+import plotly.graph_objects as go
+import streamlit as st
+
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
+from sklearn.decomposition import PCA
 
-# ======================================================
-# SETUP HALAMAN & CUSTOM CSS / HTML (UI/UX PREMIUM)
-# ======================================================
-st.set_page_config(page_title="AI Customer Insight Engine", page_icon="🛍️", layout="wide")
+# Mengabaikan peringatan (warnings) agar UI tetap bersih
+warnings.filterwarnings('ignore')
 
-custom_css = """
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-    
-    html, body, [class*="css"] {
-        font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    
-    /* Header Banner Styling */
-    .hero-banner {
-        background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #2563EB 100%);
-        padding: 45px 35px;
-        border-radius: 16px;
-        color: white;
-        text-align: center;
-        margin-bottom: 35px;
-        box-shadow: 0 10px 25px rgba(37, 99, 235, 0.15);
-    }
-    .hero-title {
-        font-size: 2.4rem;
-        font-weight: 700;
-        margin-bottom: 8px;
-        letter-spacing: -0.5px;
-    }
-    .hero-subtitle {
-        font-size: 1.1rem;
-        font-weight: 300;
-        opacity: 0.85;
-    }
+# =============================================================================
+# 1. KONFIGURASI HALAMAN & MANAJEMEN TEMA (UI/UX)
+# =============================================================================
+st.set_page_config(
+    page_title="Enterprise Customer Insight AI",
+    page_icon="💎",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-    /* AI Insight Box Card */
-    .ai-insight-container {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 24px;
-        margin-bottom: 25px;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-    }
-    .ai-badge {
-        background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-        color: white;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        display: inline-block;
-        margin-bottom: 12px;
-    }
-    .ai-heading {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: #0F172A;
-        margin-bottom: 10px;
-    }
-    .ai-text {
-        font-size: 1rem;
-        color: #334155;
-        line-height: 1.6;
-        margin-bottom: 18px;
-    }
-    .ai-action-plan {
-        background-color: #FFFFFF;
-        border-left: 4px solid #2563EB;
-        padding: 15px;
-        border-radius: 0 8px 8px 0;
-        font-size: 0.95rem;
-        color: #1E293B;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-    }
-</style>
-"""
-st.markdown(custom_css, unsafe_allow_html=True)
+def inject_custom_css():
+    """
+    Fungsi untuk menyuntikkan custom CSS ke dalam Streamlit.
+    Mengatur font, warna latar, styling card, animasi, dan komponen visual lainnya
+    agar menyerupai aplikasi SaaS modern.
+    """
+    custom_css = """
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        /* Global Styles */
+        html, body, [class*="css"] {
+            font-family: 'Poppins', sans-serif;
+            background-color: #F8FAFC;
+        }
+        
+        /* Hero Banner / Header */
+        .hero-banner {
+            background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%);
+            padding: 50px 40px;
+            border-radius: 16px;
+            color: #FFFFFF;
+            text-align: center;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-banner::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 10%, transparent 20%);
+            background-size: 20px 20px;
+            opacity: 0.3;
+            z-index: 0;
+        }
+        .hero-title {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            letter-spacing: -0.5px;
+            z-index: 1;
+            position: relative;
+        }
+        .hero-subtitle {
+            font-size: 1.2rem;
+            font-weight: 300;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+            z-index: 1;
+            position: relative;
+        }
 
-# Hero Header Section
+        /* Metric Cards */
+        .metric-container {
+            background-color: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            transition: all 0.3s ease;
+        }
+        .metric-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.05);
+            border-color: #3B82F6;
+        }
+        .metric-title {
+            font-size: 0.9rem;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0F172A;
+        }
+
+        /* Persona & Insight Cards */
+        .insight-card {
+            background-color: #FFFFFF;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            border-left: 6px solid #CBD5E1;
+            transition: transform 0.2s;
+        }
+        .insight-card:hover {
+            transform: scale(1.01);
+        }
+        .insight-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #F1F5F9;
+            padding-bottom: 10px;
+        }
+        .insight-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+        .insight-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: white;
+        }
+        .insight-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+            background-color: #F8FAFC;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+        .stat-val {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1E293B;
+        }
+        .strategy-box {
+            background-color: #EEF2F6;
+            border-left: 4px solid #2563EB;
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        /* Tabs Styling Override */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 24px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 50px;
+            white-space: pre-wrap;
+            background-color: transparent;
+            border-radius: 4px 4px 0px 0px;
+            gap: 1px;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #E0F2FE;
+            color: #0284C7;
+            font-weight: 600;
+        }
+    </style>
+    """
+    st.markdown(custom_css, unsafe_allow_html=True)
+
+# Eksekusi injeksi CSS
+inject_custom_css()
+
+# Render Hero Banner
 st.markdown("""
 <div class="hero-banner">
-    <div class="hero-title">🧠 AI Customer Insight Engine</div>
-    <div class="hero-subtitle">Mengubah matriks data angka yang rumit menjadi peta strategi bisnis yang mudah dipahami orang awam.</div>
+    <div class="hero-title">💎 Enterprise Customer Insight AI</div>
+    <div class="hero-subtitle">Platform analitik canggih bertenaga Machine Learning (K-Means) untuk mengungkap pola tersembunyi dari data pelanggan Anda, dirancang khusus untuk eksekutif bisnis dan data scientist.</div>
 </div>
 """, unsafe_allow_html=True)
 
+# =============================================================================
+# 2. MANAJEMEN DATA & CACHING PIPELINE
+# =============================================================================
+
+@st.cache_data(ttl=3600)
+def load_and_clean_data(file_source):
+    """
+    Memuat dataset dari CSV, melakukan pembersihan data awal, 
+    dan mengembalikan DataFrame pandas yang sudah siap pakai.
+    Menggunakan st.cache_data agar komputasi tidak berulang.
+    """
+    try:
+        df = pd.read_csv(file_source)
+        # Menghapus duplikasi jika ada
+        df.drop_duplicates(inplace=True)
+        return df
+    except Exception as e:
+        st.error(f"Gagal memuat data: {str(e)}")
+        return None
+
+def get_download_link(df, filename="clustered_data.csv", text="Unduh Laporan CSV"):
+    """
+    Fungsi utilitas untuk membuat tautan unduhan file CSV dari DataFrame.
+    Berguna untuk mengekspor data yang telah diproses AI.
+    """
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" style="display: inline-block; padding: 10px 20px; background-color: #10B981; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 10px;">📥 {text}</a>'
+    return href
+
+# Inisialisasi Session State
+if 'model_trained' not in st.session_state:
+    st.session_state['model_trained'] = False
+if 'df_processed' not in st.session_state:
+    st.session_state['df_processed'] = None
+
+# =============================================================================
+# 3. SIDEBAR KONTROL & PARAMETER MODEL
+# =============================================================================
+st.sidebar.markdown("## ⚙️ Konfigurasi Sistem")
+st.sidebar.markdown("Unggah data Anda atau gunakan data *default* dari sistem.")
+
 DEFAULT_CSV = "Mall_Customers.csv"
-
-# ======================================================
-# DATA PIPELINE WITH CACHING
-# ======================================================
-@st.cache_data
-def load_data(file):
-    return pd.read_csv(file)
-
-st.sidebar.markdown("### ⚙️ Pusat Kontrol Data")
-uploaded_file = st.sidebar.file_uploader("Unggah Database Pelanggan Anda (CSV)", type=["csv"])
+uploaded_file = st.sidebar.file_uploader("📂 Unggah Dataset (CSV)", type=["csv"])
 
 if uploaded_file is not None:
-    df_raw = load_data(uploaded_file)
+    df_raw = load_and_clean_data(uploaded_file)
+    st.sidebar.success(f"Data '{uploaded_file.name}' berhasil dimuat!")
 else:
-    try:
-        df_raw = load_data(DEFAULT_CSV)
-    except FileNotFoundError:
-        st.error("Gagal memuat data. Silakan sediakan file Mall_Customers.csv atau unggah mandiri lewat sidebar.")
+    if os.path.exists(DEFAULT_CSV):
+        df_raw = load_and_clean_data(DEFAULT_CSV)
+        st.sidebar.info("Menggunakan dataset sampel (Mall_Customers.csv).")
+    else:
+        st.sidebar.error("Dataset default tidak ditemukan. Harap unggah data.")
         st.stop()
 
-# Auto-detecting numeric columns
+# Validasi Kolom Numerik
 numeric_cols = df_raw.select_dtypes(include=np.number).columns.tolist()
-col_age = numeric_cols[0] if len(numeric_cols) > 0 else "Age"
-col_income = numeric_cols[1] if len(numeric_cols) > 1 else "Annual Income (k$)"
-col_spending = numeric_cols[2] if len(numeric_cols) > 2 else "Spending Score (1-100)"
+if len(numeric_cols) < 2:
+    st.error("Dataset harus memiliki minimal 2 kolom angka untuk dapat dianalisis.")
+    st.stop()
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🎛️ Parameter Machine Learning")
+
+# Pemilihan Kolom Pintar
+col_age = st.sidebar.selectbox("Pilih Kolom Usia", numeric_cols, index=0 if len(numeric_cols)>0 else 0)
+col_income = st.sidebar.selectbox("Pilih Kolom Pendapatan", numeric_cols, index=1 if len(numeric_cols)>1 else 0)
+col_spending = st.sidebar.selectbox("Pilih Kolom Skor Belanja", numeric_cols, index=2 if len(numeric_cols)>2 else 0)
 
 FEATURE_COLUMNS = [col_age, col_income, col_spending]
-n_clusters = st.sidebar.slider("Kelompokkan Menjadi Berapa Tipe?", 2, 10, 5, 
-                               help="Geser untuk membagi jumlah kelompok pelanggan sesuai target segmentasi Anda.")
 
-df = df_raw.dropna(subset=FEATURE_COLUMNS).reset_index(drop=True)
-X = df[FEATURE_COLUMNS]
+# Menghapus baris yang memiliki nilai NaN pada kolom fitur yang dipilih
+df_clean = df_raw.dropna(subset=FEATURE_COLUMNS).reset_index(drop=True)
+X = df_clean[FEATURE_COLUMNS]
 
-# Pipa Machine Learning (K-Means)
+# Parameter Algoritma
+st.sidebar.markdown("**Tuning Algoritma K-Means**")
+n_clusters = st.sidebar.slider("Jumlah Cluster (K)", min_value=2, max_value=10, value=5, step=1)
+max_iter = st.sidebar.number_input("Maksimal Iterasi", min_value=100, max_value=1000, value=300, step=50)
+random_seed = st.sidebar.number_input("Random State (Seed)", value=42)
+
+# =============================================================================
+# 4. PIPELINE MACHINE LEARNING (TRAINING & EVALUATING)
+# =============================================================================
+# Data Scaling (Standardisasi adalah hal wajib dalam jarak Euclidean seperti K-Means)
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-df["Kelompok_ID"] = kmeans.fit_predict(X_scaled)
-df["Kelompok"] = "Tipe " + (df["Kelompok_ID"] + 1).astype(str)
+# Instansiasi & Fit Model K-Means
+kmeans = KMeans(n_clusters=n_clusters, init='k-means++', max_iter=max_iter, random_state=random_seed, n_init=10)
+cluster_labels = kmeans.fit_predict(X_scaled)
 
-# ======================================================
-# LAYOUT UTAMA & INTERAKSI UI/UX
-# ======================================================
-tab1, tab2, tab3 = st.tabs(["💡 Analisis Pintar AI", "📊 Peta Visual Grafik", "🔮 Simulasi Target Baru"])
+# Menyimpan hasil ke DataFrame
+df_clean["Cluster_ID"] = cluster_labels
+df_clean["Cluster_Name"] = "Tipe " + (df_clean["Cluster_ID"] + 1).astype(str)
 
-# DATASET METADATA DAN PERSONA DI LOCK KE 5 CLUSTER UTAMA UNTUK KEMUDAHAN PENJELASAN AI
-persona_dictionary = {
-    0: {
-        "nama": "Si Sultan Konsumtif (Target Utama)",
-        "warna": "#EF4444",
-        "penjelasan": "Kelompok ini adalah ladang emas bagi bisnis Anda. Mereka memiliki tingkat pendapatan tahunan yang sangat tinggi dan tidak ragu untuk membelanjakan uang mereka dalam jumlah besar di toko Anda. Rata-rata dari mereka berada di kelompok usia muda hingga produktif.",
-        "strategi": "Fokuskan pada penawaran produk premium kelas atas, program loyalitas eksklusif (VIP Tier), rilis produk edisi terbatas (Limited Edition), dan layanan prioritas."
-    },
-    1: {
-        "nama": "Si Hemat Berduit (Potensial Tersembunyi)",
-        "warna": "#3B82F6",
-        "penjelasan": "Kelompok pelanggan ini tergolong makmur karena memiliki pendapatan tahunan yang tinggi. Namun, mereka sangat berhati-hati dan menahan diri dalam berbelanja (Skor belanja rendah). Mereka membutuhkan alasan kuat sebelum mengeluarkan uang.",
-        "strategi": "Pancing mereka menggunakan kampanye edukasi mengenai nilai investasi jangka panjang produk Anda, tawarkan jaminan garansi panjang, atau gunakan promosi sistem Cashback besar."
-    },
-    2: {
-        "nama": "Kelompok Menengah (Pelanggan Setia)",
-        "warna": "#10B981",
-        "pensembling": "Ini adalah tulang punggung stabilitas bisnis Anda. Pendapatan mereka berada di angka rata-rata menengah, dan aktivitas belanja mereka sangat konsisten secara berkala. Profil usia mereka tersebar merata.",
-        "strategi": "Jaga keterikatan mereka melalui newsletter berkala, berikan voucher diskon khusus di hari ulang tahun mereka, dan terapkan program pengumpulan poin belanja rutin."
-    },
-    3: {
-        "nama": "Si Pemburu Diskon (Agresif Budget)",
-        "warna": "#F59E0B",
-        "penjelasan": "Meskipun tingkat pendapatan tahunan mereka relatif rendah, kelompok ini memiliki hasrat belanja yang sangat tinggi. Mereka sangat sensitif terhadap perubahan harga namun sangat aktif melakukan transaksi jika dirasa menguntungkan.",
-        "strategi": "Tarik perhatian mereka dengan mengadakan Flash Sale berkala, penawaran paket bundel (Beli 1 Gratis 1), serta kupon potongan ongkos kirim gratis."
-    },
-    4: {
-        "nama": "Pelanggan Pasif (Sensitif Harga)",
-        "warna": "#64748B",
-        "penjelasan": "Kelompok ini memiliki pendapatan yang rendah dan juga jarang melakukan aktivitas belanja. Mereka hanya membeli barang yang benar-benar esensial dan fungsional bagi hidup mereka.",
-        "strategi": "Aktivasi kembali akun mereka dengan mempromosikan produk kebutuhan pokok berskala grosir murah atau berikan diskon cuci gudang dengan harga paling rendah."
-    }
+st.session_state['model_trained'] = True
+st.session_state['df_processed'] = df_clean
+
+# Perhitungan Metrik Evaluasi Kinerja Model
+sil_score = silhouette_score(X_scaled, cluster_labels)
+db_score = davies_bouldin_score(X_scaled, cluster_labels)
+ch_score = calinski_harabasz_score(X_scaled, cluster_labels)
+
+# Kamus Persona Bisnis (Diasumsikan K=5 optimal untuk penjelasan, dinamis jika lebih)
+PERSONA_DB = {
+    0: {"name": "Premium / High Rollers", "color": "#EF4444", "icon": "👑", "desc": "Pendapatan tinggi, belanja tinggi. Berikan VIP treatment."},
+    1: {"name": "Conservative / Savers", "color": "#3B82F6", "icon": "🏦", "desc": "Pendapatan tinggi, belanja rendah. Promosikan nilai investasi."},
+    2: {"name": "Standard / Loyalists", "color": "#10B981", "icon": "🤝", "desc": "Pendapatan menengah, belanja stabil. Jaga dengan loyalty point."},
+    3: {"name": "Impulse / Bargain Hunters", "color": "#F59E0B", "icon": "🏷️", "desc": "Pendapatan rendah, belanja tinggi. Gunakan diskon & flash sale."},
+    4: {"name": "Passive / Needs-Only", "color": "#64748B", "icon": "🛒", "desc": "Pendapatan rendah, belanja rendah. Tawarkan produk primer murah."}
 }
 
-# ------------------------------------------------------
-# TAB 1: ANALISIS PINTAR AI (PENJELASAN ORANG AWAM)
-# ------------------------------------------------------
-with tab1:
-    st.markdown("### 📊 Ringkasan Data Lapangan")
-    
-    # Hitung Statistik Ringkas
-    profile = df.groupby("Kelompok_ID").agg({col_age: "mean", col_income: "mean", col_spending: "mean"}).round(1)
-    
-    # Tampilkan Selector untuk Memilih Kelompok Mana yang Ingin Dijelaskan AI
-    selected_cluster = st.selectbox(
-        "Pilih Tipe Pelanggan yang Ingin Anda Pelajari Struktur & Penjelasan AI-nya:",
-        options=sorted(df["Kelompok_ID"].unique()),
-        format_func=lambda x: f"Tipe {x+1} - {persona_dictionary.get(x, {'nama': 'Pelanggan Umum'})['nama']}"
-    )
-    
-    # Tampilkan AI Insight Box
-    p_data = persona_dictionary.get(selected_cluster, {
-        "nama": f"Kelompok Campuran {selected_cluster+1}",
-        "warna": "#334155",
-        "penjelasan": "Kelompok ini terbentuk dari hasil kalkulasi jarak matematis algoritma k-means yang mendeteksi kesamaan karakteristik usia dan pendapatan tertentu.",
-        "strategi": "Lakukan pemantauan transaksi secara reguler untuk memetakan kebiasaan belanja spesifik."
-    })
-    
-    row_stats = profile.loc[selected_cluster]
-    
-    ai_box_html = f"""
-    <div class="ai-insight-container">
-        <div class="ai-badge">✨ Hasil Analisis Otomatis AI Engine</div>
-        <div class="ai-heading" style="color: {p_data['warna']};">{p_data['nama']}</div>
-        <div style="margin-bottom: 15px; font-size: 0.9rem; color: #475569;">
-            <b>Rata-rata Kelompok:</b> Usia {row_stats[col_age]} Tahun | Pendapatan ${row_stats[col_income]}k/tahun | Skor Belanja: {row_stats[col_spending]} dari 100
-        </div>
-        <div class="ai-text">{p_data['penjelasan']}</div>
-        <div class="ai-action-plan">
-            <strong>🎯 Strategi Aksi Pemasaran (Rekomendasi AI):</strong><br>{p_data['strategi']}
-        </div>
-    </div>
-    """
-    st.markdown(ai_box_html, unsafe_allow_html=True)
+def get_persona_info(cluster_id):
+    """Mengembalikan data persona berdasarkan ID, dengan fallback otomatis jika K > 5"""
+    if cluster_id in PERSONA_DB:
+        return PERSONA_DB[cluster_id]
+    else:
+        return {"name": f"Segmen Dinamis {cluster_id+1}", "color": "#0F172A", "icon": "🧩", "desc": "Segmen hasil partisi tingkat lanjut K-Means."}
 
-# ------------------------------------------------------
-# TAB 2: PETA VISUAL GRAFIK (GRAFIK 3D + PIE CHART)
-# ------------------------------------------------------
+# =============================================================================
+# 5. ANTARMUKA UTAMA (TABS STRUCTURE)
+# =============================================================================
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📊 Executive Summary", 
+    "📈 Exploratory Data Analysis", 
+    "🧠 AI Clustering Engine", 
+    "🎯 Predictive Simulator", 
+    "📁 Data Export & Reports"
+])
+
+# -----------------------------------------------------------------------------
+# TAB 1: EXECUTIVE SUMMARY (Business View)
+# -----------------------------------------------------------------------------
+with tab1:
+    st.markdown("### 📋 Ringkasan Kinerja Segmentasi")
+    st.markdown("Ikhtisar demografi dan pembagian pangsa pasar pelanggan Anda berdasarkan pemrosesan AI.")
+    
+    # KPI Metrics menggunakan HTML kustom
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    with kpi1:
+        st.markdown(f'<div class="metric-container"><div class="metric-title">Total Pelanggan</div><div class="metric-value">{len(df_clean)}</div></div>', unsafe_allow_html=True)
+    with kpi2:
+        st.markdown(f'<div class="metric-container"><div class="metric-title">Jumlah Segmen</div><div class="metric-value">{n_clusters}</div></div>', unsafe_allow_html=True)
+    with kpi3:
+        avg_age = int(df_clean[col_age].mean())
+        st.markdown(f'<div class="metric-container"><div class="metric-title">Rata-rata Usia</div><div class="metric-value">{avg_age} thn</div></div>', unsafe_allow_html=True)
+    with kpi4:
+        avg_inc = int(df_clean[col_income].mean())
+        st.markdown(f'<div class="metric-container"><div class="metric-title">Rata-rata Gaji</div><div class="metric-value">${avg_inc}k</div></div>', unsafe_allow_html=True)
+        
+    st.markdown("---")
+    st.markdown("### 🎯 Profil Persona Pelanggan")
+    
+    # Kalkulasi sentroid untuk profil
+    cluster_profiles = df_clean.groupby("Cluster_ID").agg({
+        col_age: 'mean', 
+        col_income: 'mean', 
+        col_spending: 'mean',
+        "Cluster_Name": 'count'
+    }).rename(columns={"Cluster_Name": "Jumlah Orang"}).round(1)
+    
+    # Generate Kartu HTML untuk masing-masing klaster
+    for idx, row in cluster_profiles.iterrows():
+        p_info = get_persona_info(idx)
+        persentase = round((row['Jumlah Orang'] / len(df_clean)) * 100, 1)
+        
+        card_html = f"""
+        <div class="insight-card" style="border-left-color: {p_info['color']};">
+            <div class="insight-header">
+                <div class="insight-title">{p_info['icon']} Tipe {idx+1} : {p_info['name']}</div>
+                <div class="insight-badge" style="background-color: {p_info['color']};">{persentase}% dari Populasi</div>
+            </div>
+            <div class="insight-stats">
+                <div class="stat-item"><div class="stat-label">👥 Jumlah Member</div><div class="stat-val">{int(row['Jumlah Orang'])} Orang</div></div>
+                <div class="stat-item"><div class="stat-label">🎂 Usia Rata-rata</div><div class="stat-val">{row[col_age]} Tahun</div></div>
+                <div class="stat-item"><div class="stat-label">💰 Rata-rata Gaji</div><div class="stat-val">${row[col_income]}k / thn</div></div>
+            </div>
+            <div class="strategy-box">
+                <b>🔍 Analisis & Rekomendasi:</b> {p_info['desc']} <br>
+                <i>Tingkat keaktifan belanja berada di skor {row[col_spending]} dari 100.</i>
+            </div>
+        </div>
+        """
+        st.markdown(card_html, unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
+# TAB 2: EXPLORATORY DATA ANALYSIS (EDA)
+# -----------------------------------------------------------------------------
 with tab2:
-    st.markdown("### 📉 Eksplorasi Visual Interaktif")
-    st.write("Gunakan grafik di bawah untuk melihat bagaimana AI memisahkan posisi pelanggan Anda secara nyata.")
+    st.markdown("### 📉 Analisis Statistik Deskriptif (EDA)")
+    st.markdown("Pahami distribusi data dan korelasi antar variabel sebelum model ML diterapkan.")
     
-    g_col1, g_col2 = st.columns([2, 1])
+    eda_col1, eda_col2 = st.columns(2)
     
-    with g_col1:
-        st.markdown("**1. Peta Klaster 3 Dimensi Sesuai Atribut Asli**")
-        st.caption("Anda dapat memutar, memperbesar (zoom), dan menggeser grafik 3D di bawah ini menggunakan kursor Anda.")
+    with eda_col1:
+        st.markdown("**1. Distribusi Usia Pelanggan**")
+        fig_hist1 = px.histogram(df_clean, x=col_age, marginal="box", color_discrete_sequence=['#3B82F6'], opacity=0.8)
+        fig_hist1.update_layout(height=400, margin=dict(l=20, r=20, t=30, b=20))
+        st.plotly_chart(fig_hist1, use_container_width=True)
         
-        # Urutkan dataframe agar legenda berurutan Tipe 1, Tipe 2 dst.
-        df_sorted = df.sort_values(by="Kelompok_ID")
+        st.markdown("**3. Distribusi Pendapatan (Income)**")
+        fig_hist2 = px.histogram(df_clean, x=col_income, marginal="box", color_discrete_sequence=['#10B981'], opacity=0.8)
+        fig_hist2.update_layout(height=400, margin=dict(l=20, r=20, t=30, b=20))
+        st.plotly_chart(fig_hist2, use_container_width=True)
         
-        # Buat Mapping warna kustom agar sesuai dengan Persona Card
-        color_map = { f"Tipe {k+1}": v["warna"] for k, v in persona_dictionary.items() }
+    with eda_col2:
+        st.markdown("**2. Deteksi Outlier (Boxplot Multi-Variabel)**")
+        fig_box = px.box(df_clean[FEATURE_COLUMNS], color_discrete_sequence=['#8B5CF6'])
+        fig_box.update_layout(height=400, margin=dict(l=20, r=20, t=30, b=20))
+        st.plotly_chart(fig_box, use_container_width=True)
         
+        st.markdown("**4. Matriks Korelasi (Heatmap)**")
+        corr = df_clean[FEATURE_COLUMNS].corr()
+        fig_corr = px.imshow(corr, text_auto=True, aspect="auto", color_continuous_scale="RdBu_r", origin="lower")
+        fig_corr.update_layout(height=400, margin=dict(l=20, r=20, t=30, b=20))
+        st.plotly_chart(fig_corr, use_container_width=True)
+        
+    st.info("💡 **Insight EDA:** Grafik di atas membantu memastikan apakah ada nilai ekstrim (outliers) yang dapat merusak kualitas model, dan bagaimana hubungan linear antar fitur (korelasi).")
+
+# -----------------------------------------------------------------------------
+# TAB 3: AI CLUSTERING ENGINE (Data Science View)
+# -----------------------------------------------------------------------------
+with tab3:
+    st.markdown("### 🧠 Kedalaman Model Machine Learning")
+    st.markdown("Visualisasi spasial hasil segmentasi algoritma K-Means dan evaluasi metrik matematis.")
+    
+    # 1. Metrik Evaluasi Kualitas Klaster
+    st.markdown("#### 📐 Validasi Metrik Internal")
+    m_col1, m_col2, m_col3 = st.columns(3)
+    
+    m_col1.metric("Silhouette Score (Mendekati 1 Lebih Baik)", f"{sil_score:.4f}", help="Mengukur seberapa rapat titik dalam klaster dan sejauh apa pemisahan antar klaster.")
+    m_col2.metric("Davies-Bouldin Index (Mendekati 0 Lebih Baik)", f"{db_score:.4f}", help="Mengukur rasio penyebaran dalam klaster terhadap jarak antar klaster.")
+    m_col3.metric("Calinski-Harabasz Index (Makin Tinggi Makin Baik)", f"{ch_score:.1f}", help="Rasio variansi antar-klaster dibandingkan variansi dalam-klaster.")
+    
+    st.markdown("---")
+    
+    # 2. Visualisasi Peta Scatter (3D & 2D)
+    plot_col1, plot_col2 = st.columns([1.5, 1])
+    
+    # Mapping Warna Konsisten
+    color_map = {f"Tipe {k+1}": v["color"] for k, v in PERSONA_DB.items()}
+    df_sorted = df_clean.sort_values(by="Cluster_ID")
+    
+    with plot_col1:
+        st.markdown("**Peta Klaster 3-Dimensi Ruang Fitur**")
         fig_3d = px.scatter_3d(
-            df_sorted, 
-            x=col_income, 
-            y=col_spending, 
-            z=col_age,
-            color="Kelompok",
-            color_discrete_map=color_map,
-            labels={"Kelompok": "Kategori Pelanggan"},
-            hover_name="Kelompok"
+            df_sorted, x=col_income, y=col_spending, z=col_age,
+            color="Cluster_Name", color_discrete_map=color_map,
+            hover_data=[col_age, col_income, col_spending]
         )
-        fig_3d.update_layout(margin=dict(l=0, r=0, b=0, t=0), height=550)
+        fig_3d.update_traces(marker=dict(size=5, line=dict(width=1, color='DarkSlateGrey')))
+        fig_3d.update_layout(height=600, margin=dict(l=0, r=0, b=0, t=0))
         st.plotly_chart(fig_3d, use_container_width=True)
         
-    with g_col2:
-        st.markdown("**2. Proporsi Dominasi Pasar**")
-        st.caption("Melihat seberapa besar persentase jumlah data pada setiap kelompok.")
+    with plot_col2:
+        st.markdown("**Principal Component Analysis (PCA) 2D**")
+        st.caption("Mereduksi 3 fitur menjadi 2 komponen utama agar mudah dilihat secara flat (datar).")
+        pca = PCA(n_components=2)
+        X_pca = pca.fit_transform(X_scaled)
+        df_pca = pd.DataFrame(X_pca, columns=["PCA 1", "PCA 2"])
+        df_pca["Cluster_Name"] = df_sorted["Cluster_Name"]
         
-        fig_pie = px.pie(
-            df_sorted, 
-            names="Kelompok",
-            color="Kelompok",
-            color_discrete_map=color_map,
-            hole=0.4
+        fig_pca = px.scatter(
+            df_pca, x="PCA 1", y="PCA 2", color="Cluster_Name", 
+            color_discrete_map=color_map, opacity=0.8
         )
-        fig_pie.update_layout(margin=dict(l=10, r=10, b=10, t=10), height=380, showlegend=True)
+        fig_pca.update_traces(marker=dict(size=8, line=dict(width=1, color='white')))
+        fig_pca.update_layout(height=400, margin=dict(l=10, r=10, b=10, t=10))
+        st.plotly_chart(fig_pca, use_container_width=True)
+        
+        # Grafik Tambahan: Pie Chart Distribusi
+        st.markdown("**Porsi Populasi**")
+        fig_pie = px.pie(df_sorted, names="Cluster_Name", color="Cluster_Name", color_discrete_map=color_map, hole=0.4)
+        fig_pie.update_layout(height=300, margin=dict(l=10, r=10, b=10, t=10))
         st.plotly_chart(fig_pie, use_container_width=True)
-        
-        # Tampilkan Evaluasi Siluet sebagai penjamin akurasi sains data
-        sil_score = silhouette_score(X_scaled, df["Kelompok_ID"])
-        st.metric("Skor Kualitas Pemisahan Data (Silhouette Score)", f"{sil_score:.3f}")
-        st.caption("Skor bernilai positif membuktikan pembagian kelompok valid dan tidak saling tumpang tindih secara acak.")
 
-# ------------------------------------------------------
-# TAB 3: SIMULASI TARGET BARU (PREDIKSI INTERAKTIF)
-# ------------------------------------------------------
-with tab3:
-    st.markdown("### 🔮 Penempatan Segmentasi Pelanggan Baru")
-    st.write("Gunakan fitur ini saat ada member baru yang mendaftar untuk mendeteksi secara langsung strategi marketing apa yang paling pas untuknya.")
+# -----------------------------------------------------------------------------
+# TAB 4: PREDICTIVE SIMULATOR (Deployment / Inference)
+# -----------------------------------------------------------------------------
+with tab4:
+    st.markdown("### 🔮 Simulator Prediksi Data Baru")
+    st.markdown("Fitur *Inference* waktu-nyata. Uji coba algoritma dengan memasukkan data pelanggan baru untuk mengetahui di segmen mana mereka berada.")
     
-    with st.form("input_pelanggan_baru"):
-        c1, c2, c3 = st.columns(3)
-        in_age = c1.slider("Berapa Usia Pelanggan?", int(df[col_age].min()), int(df[col_age].max()), 30)
-        in_income = c2.slider("Estimasi Pendapatan Tahunan (k$)?", int(df[col_income].min()), int(df[col_income].max()), 50)
-        in_spending = c3.slider("Berapa Skor Kebiasaan Belanja Mereka (1-100)?", 1, 100, 50)
+    with st.form("inference_form"):
+        st.markdown("Masukkan Data Pelanggan Fiktif / Baru:")
+        f_col1, f_col2, f_col3 = st.columns(3)
         
-        submit_btn = st.form_submit_button("Jalankan Prediksi AI", use_container_width=True)
+        val_age = f_col1.number_input("Umur (Tahun)", min_value=10, max_value=100, value=30, step=1)
+        val_inc = f_col2.number_input("Gaji Tahunan (K$)", min_value=1, max_value=200, value=50, step=1)
+        val_spend = f_col3.number_input("Skor Belanja (1-100)", min_value=1, max_value=100, value=50, step=1)
         
-        if submit_btn:
-            sample_scaled = scaler.transform([[in_age, in_income, in_spending]])
-            pred_id = kmeans.predict(sample_scaled)[0]
-            pred_persona = persona_dictionary.get(pred_id, {"nama": "Umum", "warna": "#000000", "strategi": "Promosi Standar"})
-            
-            st.markdown(f"""
-            <div style="background-color: #EEF2F6; padding: 20px; border-radius: 8px; border-top: 5px solid {pred_persona['warna']}; margin-top: 15px;">
-                <h4 style="color: {pred_persona['warna']}; margin: 0 0 5px 0;">🎉 Hasil Analisis: Pelanggan Masuk Kategori Tipe {pred_id+1}</h4>
-                <p style="font-size: 1.1rem; margin: 0 0 10px 0;"><b>Persona:</b> {pred_persona['nama']}</p>
-                <div style="background-color: #FFFFFF; padding: 12px; border-radius: 4px; font-size: 0.95rem; border-left: 3px solid #10B981;">
-                    <b>Rencana Aksi:</b> {pred_persona['strategi']}
+        submit_infer = st.form_submit_button("Lakukan Prediksi Algoritma", use_container_width=True)
+        
+        if submit_infer:
+            with st.spinner("Memproses data pada Model K-Means..."):
+                # Transformasi data masukan sesuai skala yang dipelajari saat fit()
+                input_scaled = scaler.transform([[val_age, val_inc, val_spend]])
+                # Prediksi Cluster
+                pred_cluster = kmeans.predict(input_scaled)[0]
+                
+                # Fetch Persona Info
+                pred_info = get_persona_info(pred_cluster)
+                
+                # UI Alert untuk hasil
+                st.success(f"Proses komputasi selesai! Pelanggan masuk ke dalam **Tipe {pred_cluster+1}**.")
+                
+                res_html = f"""
+                <div style="background-color: #FFFFFF; padding: 25px; border-radius: 10px; border-left: 8px solid {pred_info['color']}; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 15px;">
+                    <h3 style="margin-top: 0; color: #0F172A;">{pred_info['icon']} Persona: {pred_info['name']}</h3>
+                    <p style="font-size: 1.1rem; color: #475569;"><b>Strategi yang harus diterapkan:</b><br>{pred_info['desc']}</p>
+                    <hr style="border: 0; border-top: 1px solid #E2E8F0;">
+                    <small style="color: #94A3B8;">Nilai Numerik Tensor: {input_scaled[0]}</small>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """
+                st.markdown(res_html, unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
+# TAB 5: DATA EXPORT & REPORTS
+# -----------------------------------------------------------------------------
+with tab5:
+    st.markdown("### 📁 Basis Data Klastering & Laporan Ekspor")
+    st.markdown("Lihat tabel lengkap hasil pemrosesan algoritma dan unduh dalam format CSV untuk kebutuhan pelaporan bisnis atau integrasi dengan *dashboard* BI eksternal.")
+    
+    # Menampilkan DataFrame
+    st.dataframe(df_clean, use_container_width=True, height=400)
+    
+    # Modul Ekspor
+    st.markdown("#### Manajemen Unduhan")
+    st.markdown("Klik tombol di bawah untuk mengekspor tabel di atas yang telah berisi label klasifikasi Machine Learning.")
+    
+    st.markdown(get_download_link(df_clean, filename="ML_Clustered_Customers.csv"), unsafe_allow_html=True)
+    
+    st.markdown("---")
+    st.markdown("<div style='text-align: center; color: #64748B; font-size: 0.85rem;'>Versi Aplikasi: 3.1.0-Enterprise | Engine: scikit-learn 1.x | Framework: Streamlit</div>", unsafe_allow_html=True)
