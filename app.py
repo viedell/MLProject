@@ -821,6 +821,36 @@ with tab_schema:
     
     with guide_col1:
         st.markdown("#### Urutan dan Struktur Header Kolom Database")
+        schema_data = {
+            "Nama Kolom (Header)": [
+                "CustomerID",
+                "Gender",
+                "Age",
+                "Annual Income (k$)",
+                "Spending Score (1-100)"
+            ],
+            "Tipe Data": [
+                "Numerik (Integer)",
+                "Teks / Kategori",
+                "Numerik (Integer)",
+                "Numerik (Float/Integer)",
+                "Numerik (Integer)"
+            ],
+            "Contoh Nilai": [
+                "1, 2, 3...",
+                "Male / Female",
+                "19, 35, 54...",
+                "15, 60, 137...",
+                "39, 81, 5..."
+            ],
+            "Aturan Validasi": [
+                "ID Unik Pelanggan (Tidak dimasukkan ke fitur latih ML)",
+                "Opsional (Hanya untuk analisa deskriptif silang di EDA)",
+                "Usia dalam tahun (minimal 10)",
+                "Pendapatan tahunan dalam satuan k$ atau angka bulat",
+                "Skor belanja buatan sistem (skala 1 s.d. 100)"
+            ]
+        }
         st.table(pd.DataFrame(schema_data))
         
         st.markdown("#### Kriteria Kualitas Data Minimum")
