@@ -272,9 +272,17 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### 🎛️ Parameter Machine Learning")
 
 # Pemilihan Kolom Pintar
-col_age = st.sidebar.selectbox("Pilih Kolom Usia", numeric_cols, index=0 if len(numeric_cols)>0 else 0)
-col_income = st.sidebar.selectbox("Pilih Kolom Pendapatan", numeric_cols, index=1 if len(numeric_cols)>1 else 0)
-col_spending = st.sidebar.selectbox("Pilih Kolom Skor Belanja", numeric_cols, index=2 if len(numeric_cols)>2 else 0)
+# Fungsi cerdas AI untuk menebak otomatis nama kolom yang benar
+def tebak_kolom(kolom_list, kata_kunci, default_idx):
+    for i, nama_kolom in enumerate(kolom_list):
+        if kata_kunci.lower() in nama_kolom.lower():
+            return i
+    return default_idx if default_idx < len(kolom_list) else 0
+
+# Sistem sekarang akan mencari kata 'age', 'income', dan 'score'
+col_age = st.sidebar.selectbox("Pilih Kolom Usia", numeric_cols, index=tebak_kolom(numeric_cols, "age", 1))
+col_income = st.sidebar.selectbox("Pilih Kolom Pendapatan", numeric_cols, index=tebak_kolom(numeric_cols, "income", 2))
+col_spending = st.sidebar.selectbox("Pilih Kolom Skor Belanja", numeric_cols, index=tebak_kolom(numeric_cols, "score", 3))
 
 FEATURE_COLUMNS = [col_age, col_income, col_spending]
 
