@@ -475,7 +475,7 @@ tab1, tab2, tab_research_lab, tab_submission, tab_schema, tab_explorer = st.tabs
     "Laporan Profil Segmen Pelanggan", 
     "Asisten Diagnostik Pelanggan AI", 
     "Data Research Lab (Technical)", 
-    "ML Project Submission Hub",
+    "Laporan Metodologi & Validasi Model",
     "Panduan Pembaruan Database",
     "Dataset Explorer"
 ])
@@ -812,11 +812,11 @@ with tab_research_lab:
         st.dataframe(original_centroids.drop(columns="Cluster_ID").set_index("Nama Segmen").round(2), use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# TAB 4: ML PROJECT SUBMISSION HUB (ACADEMIC REPORT GENERATOR)
+# TAB 4: LAPORAN METODOLOGI & VALIDASI MODEL (CONSULTANT HANDOVER DOCUMENT)
 # -----------------------------------------------------------------------------
 with tab_submission:
-    st.markdown("### Machine Learning Project Report & Submission Hub")
-    st.markdown("Unduh laporan akademik lengkap dari project ini beserta dengan program kodenya untuk diunggah ke Google Drive Anda sesuai dengan kriteria penilaian standar.")
+    st.markdown("### Laporan Metodologi & Validasi Model (Dokumen Serah Terima Teknis)")
+    st.markdown("Dokumen teknis ini memuat metodologi ilmiah, audit data, hasil visualisasi, serta metrik validasi model segmentasi K-Means yang dikonfigurasi secara waktu-nyata (real-time). Ditujukan untuk jajaran manajemen klien dan tim IT.")
     
     # Pre-generate markdown tables to prevent compilation crashes on pandas dependencies
     try:
@@ -827,72 +827,73 @@ with tab_submission:
         centroid_table_md = original_centroids.drop(columns="Cluster_ID").set_index("Nama Segmen").round(2).to_string()
 
     # Dynamic Report Template based on current run
-    report_content = f"""# Laporan Project Machine Learning: Segmentasi Pelanggan AI
+    report_content = f"""# Dokumentasi Teknis & Validasi Model Segmentasi Pelanggan
 
-Platform sistem penunjang keputusan operasional ini dikembangkan untuk mengklasifikasikan perilaku pelanggan secara sistematis dengan menggunakan model pembelajaran mesin unsupervised.
+Dokumen serah terima teknis ini memaparkan metodologi pemrosesan data, justifikasi pemilihan algoritma, hasil analisis visual, serta validasi performa model clustering yang diimplementasikan untuk sistem manajemen pelanggan klien.
 
 ---
 
-## A. Collecting Dataset yang Akurat
-- **Sumber Data:** Berkas data transaksi/demografi retail. Sumber data default dianalisa dari berkas `{DEFAULT_CSV}`.
-- **Ukuran Dataset Latih:** {len(df_clean)} baris (setelah melewati filter duplikasi dan data pencilan).
-- **Atribut/Fitur Pembelajaran Latih:** {", ".join(SELECTED_FEATURES)}
-- **Tabel Statistik Deskriptif Dataset Latih:**
+## A. Audit & Pengumpulan Dataset (Data Audit)
+- **Sumber Basis Data:** Dataset demografi dan profil pengeluaran pelanggan ritel. Data aktif diambil dari berkas `{DEFAULT_CSV}`.
+- **Volume Data Bersih:** {len(df_clean)} baris data (setelah dilakukan penyaringan data duplikasi, baris kosong, dan pencilan).
+- **Atribut Analisis yang Digunakan:** {", ".join(SELECTED_FEATURES)}
+- **Ringkasan Statistik Deskriptif Atribut Latih:**
 {desc_table_md}
 
 ---
 
-## B. Pemilihan Model Machine Learning
-- **Kategori Model:** Unsupervised Learning (Pembelajaran Tidak Terarah).
-- **Algoritma Model:** K-Means Clustering.
-- **Rasionalisasi Pemilihan Model:** 
-  1. Dataset bersifat *unlabeled* (tidak memiliki label target klasifikasi bawaan), sehingga sangat cocok diselesaikan secara statistik menggunakan partisi kedekatan spasial.
-  2. K-Means relatif sangat cepat dan efisien untuk memproses data numerik berdasarkan perhitungan jarak Euclidean geometris.
-- **Hyperparameter Terpilih (Active Run):**
-  - Jumlah Klaster (K): {n_clusters}
-  - Metode Inisialisasi: `k-means++` (mempercepat konvergensi sentroid awal)
+## B. Arsitektur & Justifikasi Pemilihan Model (Algorithm Justification)
+- **Paradigma Pembelajaran:** Unsupervised Learning (Pembelajaran Tidak Terarah).
+- **Pilihan Algoritma:** K-Means Clustering (Pengelompokan Berbasis Jarak Geometris).
+- **Rasionalisasi Teknis Pemilihan Model:** 
+  1. Karakteristik basis data pelanggan bersifat *unlabeled* (tidak memiliki pengelompokan kelas target bawaan), sehingga memerlukan teknik partisi data berdasarkan tingkat kemiripan atribut.
+  2. Algoritma K-Means menawarkan efisiensi komputasi yang tinggi dan stabilitas konvergensi yang baik pada dimensi numerik bertipe kontinu dengan menggunakan perhitungan jarak Euclidean.
+- **Konfigurasi Hyperparameter Model Aktif:**
+  - Jumlah Segmentasi Klaster (K): {n_clusters}
+  - Algoritma Inisialisasi: `k-means++` (untuk optimalisasi penempatan sentroid awal)
   - Batas Iterasi Maksimum: {max_iter}
-  - Nilai Pengacak (Seed): {random_seed}
+  - Nilai Kunci Pengacak (Seed): {random_seed}
 
 ---
 
-## C. Pemrosesan Data & Visualisasi Result
-- **Normalisasi Fitur (Preprocessing):** Menggunakan modul `{scaler_choice}` untuk menstandarkan rentang dimensi data agar parameter berskala besar tidak mendominasi model.
-- **Saringan Pencilan (Outlier Filtering):** {"Aktif (Threshold = " + str(z_threshold) + " Standard Deviation)" if filter_outliers else "Tidak Aktif"}
-- **Reduksi Dimensi Spasial:** Menggunakan Principal Component Analysis (PCA) untuk memproyeksikan fitur multi-dimensi ke dalam bidang kartesius 2-Dimensi.
-- **Titik Pusat Klaster Akhir (Centroids Asli):**
+## C. Pemrosesan Pipeline & Visualisasi Spasial (Data Pipeline)
+- **Normalisasi Skala Parameter:** Menggunakan teknik `{scaler_choice}` untuk menyeimbangkan bobot variansi antar parameter agar parameter bernominal besar tidak mendominasi model jarak.
+- **Penyaringan Pencilan (Outliers):** {"Aktif (Ambang Batas = " + str(z_threshold) + " Standard Deviation)" if filter_outliers else "Tidak Aktif"}
+- **Reduksi Dimensi (PCA Projections):** Menggunakan Principal Component Analysis (PCA) untuk mereduksi parameter multi-dimensi menjadi 2 komponen utama (PCA 1 dan PCA 2) demi kebutuhan visualisasi grafis sebaran klaster.
+- **Koordinat Pusat Gravitasi Segmen (Centroids Asli):**
 {centroid_table_md}
 
 ---
 
-## D. Evaluasi Model dan Analisis Result
-Kualitas model segmentasi K-Means diverifikasi secara objektif menggunakan tiga indeks metrik internal:
+## D. Validasi Model & Analisis Metrik Real-Time (Model Validation)
+Kualitas dan kekuatan partisi model diuji secara waktu-nyata (*real-time*) menggunakan tiga indeks evaluasi formal:
 1. **Silhouette Score:** `{sil_score:.4f}`
-   - *Analisis:* Mengukur tingkat kerapatan objek dalam klaster dan pemisahan dengan klaster tetangga. Nilai yang positif menunjukkan pembentukan grup yang ideal.
+   - *Analisis:* Mengukur seberapa dekat suatu titik data dengan titik lain dalam klasternya sendiri dibandingkan dengan titik di klaster tetangga (rentang -1 hingga 1). Skor positif tinggi menunjukkan pemisahan kelompok yang matang dan solid.
 2. **Davies-Bouldin Index:** `{db_score:.4f}`
-   - *Analisis:* Mengukur rasio penyebaran dalam klaster terhadap pemisahan antarklaster. Nilai yang semakin kecil mendekati 0 menunjukkan partisi yang sangat tegas.
+   - *Analisis:* Menilai tingkat tumpang tindih (*overlap*) antar-klaster. Skor yang semakin mendekati 0 menunjukkan jarak antar-kelompok yang tegas dan minim tumpang tindih.
 3. **Calinski-Harabasz Index:** `{ch_score:.1f}`
-   - *Analisis:* Rasio jumlah kuadrat antar-klaster terhadap jumlah kuadrat dalam-klaster. Skor tinggi memvalidasi struktur klaster yang kokoh.
-4. **Analisis Elbow Curve (WCSS):**
-   - Nilai WCSS dihitung dinamis dari K=1 s.d. 10. Tikungan kurva yang landai memvalidasi keputusan K={n_clusters} sebagai jumlah segmentasi paling efisien secara komputasi.
+   - *Analisis:* Menghitung rasio jumlah dispersi antar-klaster terhadap jumlah dispersi dalam-klaster. Semakin tinggi skornya menandakan klaster terbentuk dengan tingkat kepadatan yang optimal.
+4. **Analisis Kurva Sikut (Elbow Curve - WCSS):**
+   - Nilai Within-Cluster Sum of Squares (WCSS) dievaluasi dinamis dari K=1 s.d. 10. Hasil kurva sikut menunjukkan bahwa penurunan tingkat variansi terdalam terjadi pada lekukan K={n_clusters}, memvalidasi jumlah klaster pilihan.
 
 ---
 
-## E. Deployment Result
-- **Kerangka Deployment:** Diunggah sebagai aplikasi web interaktif (*web-app dashboard*) menggunakan library Streamlit Python.
-- **Modul Deployment:**
-  1. *AI Customer Diagnostic Assistant*: Antarmuka inferensi dinamis bagi staf toko untuk memasukkan data numerik pelanggan baru dan langsung memperoleh kategori segmentasi secara instan.
-  2. *Operational Action Guidelines*: Menghasilkan arahan taktis operasional dan naskah percakapan layanan pelanggan terstandardisasi berdasarkan kategori klaster AI.
+## E. Handover & Status Deployment Produksi (Deployment & Handover)
+- **Media Penerapan (Deployment Platform):** Dasbor aplikasi web interaktif berbasis cloud yang didukung oleh server Streamlit.
+- **Modul Integrasi Serah Terima:**
+  1. *Asisten Diagnostik Pelanggan AI*: Antarmuka kalkulator keputusan instan bagi staf operasional lapangan untuk memprediksi kategori segmen pelanggan baru secara waktu-nyata.
+  2. *Panduan Skrip & Aksi Operasional*: Arahan taktis layanan pelanggan dan panduan naskah komunikasi pelayanan untuk staf *frontliner* agar penawaran promosi berjalan tepat sasaran.
+- **Tautan Repositori Kode:** [Dapat dilampirkan dengan tautan repositori produksi Anda]
 """
 
-    st.markdown("#### 1. Preview Laporan Proyek Akademik (Kriteria A s.d E)")
+    st.markdown("#### 1. Preview Dokumen Teknis & Laporan Metodologi")
     st.text_area("Konten File Laporan (Markdown)", report_content, height=350)
     
     # Download Button for the Report File
     st.download_button(
-        label="Unduh Berkas Laporan Project_Report.md",
+        label="Unduh Laporan Model_Methodology_&_Validation_Report.md",
         data=report_content,
-        file_name="ML_Project_Report.md",
+        file_name="Model_Methodology_&_Validation_Report.md",
         mime="text/markdown",
         use_container_width=True
     )
@@ -900,8 +901,8 @@ Kualitas model segmentasi K-Means diverifikasi secara objektif menggunakan tiga 
     st.markdown("---")
     
     # 2. Exporter Source Code
-    st.markdown("#### 2. Berkas Source Code Program (app.py)")
-    st.caption("Salin kode di bawah ini atau lampirkan tautan berkas ini untuk memenuhi kelengkapan program.")
+    st.markdown("#### 2. Kode Program Integrasi Sistem (app.py)")
+    st.caption("Berikut adalah salinan kode program lengkap yang sedang berjalan untuk kebutuhan peninjauan teknis tim IT klien.")
     
     try:
         with open(__file__, "r", encoding="utf-8") as f:
